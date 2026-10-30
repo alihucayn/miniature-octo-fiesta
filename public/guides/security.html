@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Security | DocForge</title>
+<meta name="description" content="How DocForge renders PDFs safely: an isolated Chromium context per render with JavaScript disabled, https-only public asset fetching, deadlines, hashed API keys and daily backups.">
+<link rel="canonical" href="https://YOUR-DOMAIN/security">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="DocForge">
+<meta property="og:title" content="Security | DocForge">
+<meta property="og:description" content="How DocForge renders PDFs safely: an isolated Chromium context per render with JavaScript disabled, https-only public asset fetching, deadlines, hashed API keys and daily backups.">
+<meta property="og:url" content="https://YOUR-DOMAIN/security">
+<meta property="og:image" content="https://YOUR-DOMAIN/assets/og.png">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath d='M16 2 28 9v14L16 30 4 23V9z' fill='%234f46e5'/%3E%3Cpath d='M11 10h7l4 4v8H11z' fill='%23fff'/%3E%3C/svg%3E">
+<script src="/assets/site.js" defer></script>
+<style>
+  :root { --bg:#fafaf9; --fg:#1c1917; --muted:#57534e; --line:#e7e5e4; --card:#fff; --accent:#4f46e5; --accent-fg:#fff; --code:#1c1917; --code-fg:#e7e5e4; --err:#b91c1c; --warn-bg:#fef3c7; --warn-fg:#78350f; }
+  @media (prefers-color-scheme: dark) { :root { --bg:#0c0a09; --fg:#f5f5f4; --muted:#a8a29e; --line:#292524; --card:#1c1917; --accent:#818cf8; --accent-fg:#0c0a09; --code:#000; --err:#f87171; --warn-bg:#422006; --warn-fg:#fde68a; } }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--fg); font:16px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif; }
+  a { color: var(--accent); }
+  .wrap { max-width: 1080px; margin: 0 auto; padding: 0 16px; }
+  nav { display:flex; justify-content:space-between; align-items:center; padding:18px 0; gap:12px; flex-wrap:wrap; }
+  nav .brand { font-size:18px; font-weight:700; letter-spacing:-.3px; margin:0; }
+  nav a { margin-left:18px; color:var(--fg); text-decoration:none; font-size:14px; }
+  nav div a:first-child { margin-left:0; }
+  main { max-width: 820px; padding: 24px 0 48px; }
+  .crumbs { font-size:14px; color:var(--muted); margin:0 0 12px; }
+  h1 { font-size: clamp(28px, 4.5vw, 42px); line-height:1.1; letter-spacing:-1px; margin:0 0 14px; }
+  h2 { font-size: 24px; letter-spacing:-.4px; margin:40px 0 8px; }
+  h3 { font-size: 18px; margin:24px 0 6px; }
+  .lead { font-size: 19px; color: var(--muted); }
+  .muted { color: var(--muted); }
+  .btn { display:inline-block; background:var(--accent); color:var(--accent-fg); border:0; border-radius:8px; padding:11px 18px; font:600 15px system-ui; cursor:pointer; text-decoration:none; text-align:center; }
+  .btn.ghost { background:transparent; color:var(--fg); border:1px solid var(--line); }
+  .btn.small { padding:6px 12px; font-size:13px; }
+  .btn[disabled] { opacity:.6; cursor:progress; }
+  .row { display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
+  pre { background:var(--code); color:var(--code-fg); padding:16px; border-radius:10px; overflow:auto; font-size:13px; line-height:1.5; margin:0 0 16px; }
+  pre[contenteditable] { outline: 1px dashed transparent; }
+  pre[contenteditable]:focus { outline-color: var(--accent); }
+  code { font: 13.5px ui-monospace, Menlo, monospace; }
+  pre code { font-size: inherit; }
+  .codehead { display:flex; justify-content:space-between; align-items:center; gap:10px; margin:16px 0 6px; font-size:13px; }
+  .tablewrap { overflow-x:auto; margin: 12px 0 16px; }
+  table { border-collapse: collapse; width:100%; font-size:15px; }
+  th, td { text-align:left; padding:9px 10px; border-bottom:1px solid var(--line); vertical-align:top; }
+  th { font-size:13px; color:var(--muted); font-weight:600; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:20px; }
+  .grid { display:grid; gap:16px; grid-template-columns: repeat(auto-fit, minmax(230px,1fr)); }
+  .grid .card h3 { margin:0 0 6px; font-size:17px; }
+  .grid .card p { margin:0; }
+  .note { background:var(--warn-bg); color:var(--warn-fg); border-radius:8px; padding:10px 14px; font-size:15px; }
+  .cta { margin-top:44px; }
+  .cta h2 { margin-top:0; }
+  .yes { color: inherit; }
+  .no { color: var(--muted); }
+  footer { padding: 30px 0 50px; color: var(--muted); font-size: 14px; border-top:1px solid var(--line); }
+  footer a { margin-right:14px; display:inline-block; }
+</style>
+</head>
+<body>
+<!-- TODO(founder): keep this page factual. Do not add certifications, audits or uptime figures that do not exist. -->
+<div class="wrap">
+  <nav><a class="brand" href="/">⬡ DocForge</a><div><a href="/#demo">Demo</a><a href="/#pricing">Pricing</a><a href="/docs">Docs</a><a href="/guides/">Guides</a></div></nav>
+  <main>
+<h1>Security</h1>
+<p class="lead">How DocForge handles your templates, data and API keys. This page describes what the code does today; it is not a certification.</p>
+
+<h2>Rendering isolation</h2>
+<ul>
+  <li>Every render gets a <b>fresh, isolated browser context</b> in headless Chromium, closed when the PDF is done. No cookies, storage or cache are shared between renders or customers.</li>
+  <li><b>JavaScript is disabled</b> in that context, so a template or injected value cannot run scripts.</li>
+  <li>Template values are HTML-escaped by default (Handlebars <code>{{ }}</code>).</li>
+  <li>Every render has a <b>deadline</b> (30 seconds by default), templates that take too long to evaluate are stopped, and each plan has a page limit, so one document cannot tie up the service.</li>
+</ul>
+
+<h2>Network access from templates</h2>
+<ul>
+  <li>Remote assets are fetched only over <b>https</b>, and only <b>images, fonts and stylesheets</b>. Scripts, frames and other requests are blocked.</li>
+  <li>Hostnames are resolved and requests to <b>private, loopback, link-local and other internal addresses are refused</b>, including IPv6 and IPv4-mapped forms. This protects the server's metadata service and internal network.</li>
+  <li>The response header <code>X-DocForge-Blocked-Assets</code> tells you how many requests were blocked. See <a href="/docs#remote-assets">remote assets</a>.</li>
+</ul>
+
+<h2>API keys</h2>
+<ul>
+  <li>Keys are stored only as a <b>SHA-256 hash</b>; the plain key is shown once at creation.</li>
+  <li>Rotate a key at any time with <code>POST /v1/keys/rotate</code>; the old key stops working immediately.</li>
+  <li>Lost keys are recovered with a single-use link, valid for 30 minutes, sent to the account email.</li>
+</ul>
+
+<h2>Data handling</h2>
+<ul>
+  <li>Render payloads and PDFs are processed in memory and not retained, unless you request <code>output: "url"</code>, whose files are deleted after 24 hours. Details in the <a href="/privacy">privacy policy</a>.</li>
+  <li>All traffic to the API is served over HTTPS.</li>
+  <li>The account database is backed up daily; snapshots are kept for 7 days on the server and 7 days off-site.</li>
+  <li>Card payments are handled entirely by Lemon Squeezy. DocForge never sees card numbers.</li>
+</ul>
+
+<h2>Reporting a vulnerability</h2>
+<p>Email <a data-support-email href="mailto:"></a> with the details and steps to reproduce. Please give us reasonable time to fix the issue before disclosing it. We do not run a paid bug bounty.</p>
+  </main>
+  <footer>
+    <div>DocForge · <a data-support-email href="mailto:"></a></div>
+    <div style="margin-top:10px">
+      <a href="/docs">API docs</a><a href="/guides/">Guides</a><a href="/terms">Terms</a><a href="/privacy">Privacy</a><a href="/refunds">Refunds</a><a href="/security">Security</a>
+    </div>
+  </footer>
+</div>
+</body>
+</html>

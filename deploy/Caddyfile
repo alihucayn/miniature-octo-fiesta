@@ -1,0 +1,5 @@
+# Replace YOUR-DOMAIN with the host in PUBLIC_URL (e.g. pdf.example.com).
+# Caddy fetches and renews the TLS certificate automatically.
+YOUR-DOMAIN {
+	reverse_proxy 127.0.0.1:3000
+}

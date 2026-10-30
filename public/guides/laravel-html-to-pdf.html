@@ -1,0 +1,190 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Laravel HTML to PDF: dompdf vs Snappy vs Browsershot vs an API</title>
+<meta name="description" content="Compare dompdf, Snappy (wkhtmltopdf, archived 2023), Browsershot and a hosted API for Laravel PDFs, then render your Blade view with Http::withToken() and handle errors.">
+<link rel="canonical" href="https://YOUR-DOMAIN/guides/laravel-html-to-pdf">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="DocForge">
+<meta property="og:title" content="Laravel HTML to PDF: dompdf vs Snappy vs Browsershot vs an API">
+<meta property="og:description" content="Compare dompdf, Snappy (wkhtmltopdf, archived 2023), Browsershot and a hosted API for Laravel PDFs, then render your Blade view with Http::withToken() and handle errors.">
+<meta property="og:url" content="https://YOUR-DOMAIN/guides/laravel-html-to-pdf">
+<meta property="og:image" content="https://YOUR-DOMAIN/assets/og.png">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath d='M16 2 28 9v14L16 30 4 23V9z' fill='%234f46e5'/%3E%3Cpath d='M11 10h7l4 4v8H11z' fill='%23fff'/%3E%3C/svg%3E">
+<script src="/assets/site.js" defer></script>
+<style>
+  :root { --bg:#fafaf9; --fg:#1c1917; --muted:#57534e; --line:#e7e5e4; --card:#fff; --accent:#4f46e5; --accent-fg:#fff; --code:#1c1917; --code-fg:#e7e5e4; --err:#b91c1c; --warn-bg:#fef3c7; --warn-fg:#78350f; }
+  @media (prefers-color-scheme: dark) { :root { --bg:#0c0a09; --fg:#f5f5f4; --muted:#a8a29e; --line:#292524; --card:#1c1917; --accent:#818cf8; --accent-fg:#0c0a09; --code:#000; --err:#f87171; --warn-bg:#422006; --warn-fg:#fde68a; } }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--fg); font:16px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif; }
+  a { color: var(--accent); }
+  .wrap { max-width: 1080px; margin: 0 auto; padding: 0 16px; }
+  nav { display:flex; justify-content:space-between; align-items:center; padding:18px 0; gap:12px; flex-wrap:wrap; }
+  nav .brand { font-size:18px; font-weight:700; letter-spacing:-.3px; margin:0; }
+  nav a { margin-left:18px; color:var(--fg); text-decoration:none; font-size:14px; }
+  nav div a:first-child { margin-left:0; }
+  main { max-width: 820px; padding: 24px 0 48px; }
+  .crumbs { font-size:14px; color:var(--muted); margin:0 0 12px; }
+  h1 { font-size: clamp(28px, 4.5vw, 42px); line-height:1.1; letter-spacing:-1px; margin:0 0 14px; }
+  h2 { font-size: 24px; letter-spacing:-.4px; margin:40px 0 8px; }
+  h3 { font-size: 18px; margin:24px 0 6px; }
+  .lead { font-size: 19px; color: var(--muted); }
+  .muted { color: var(--muted); }
+  .btn { display:inline-block; background:var(--accent); color:var(--accent-fg); border:0; border-radius:8px; padding:11px 18px; font:600 15px system-ui; cursor:pointer; text-decoration:none; text-align:center; }
+  .btn.ghost { background:transparent; color:var(--fg); border:1px solid var(--line); }
+  .btn.small { padding:6px 12px; font-size:13px; }
+  .btn[disabled] { opacity:.6; cursor:progress; }
+  .row { display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
+  pre { background:var(--code); color:var(--code-fg); padding:16px; border-radius:10px; overflow:auto; font-size:13px; line-height:1.5; margin:0 0 16px; }
+  pre[contenteditable] { outline: 1px dashed transparent; }
+  pre[contenteditable]:focus { outline-color: var(--accent); }
+  code { font: 13.5px ui-monospace, Menlo, monospace; }
+  pre code { font-size: inherit; }
+  .codehead { display:flex; justify-content:space-between; align-items:center; gap:10px; margin:16px 0 6px; font-size:13px; }
+  .tablewrap { overflow-x:auto; margin: 12px 0 16px; }
+  table { border-collapse: collapse; width:100%; font-size:15px; }
+  th, td { text-align:left; padding:9px 10px; border-bottom:1px solid var(--line); vertical-align:top; }
+  th { font-size:13px; color:var(--muted); font-weight:600; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:20px; }
+  .grid { display:grid; gap:16px; grid-template-columns: repeat(auto-fit, minmax(230px,1fr)); }
+  .grid .card h3 { margin:0 0 6px; font-size:17px; }
+  .grid .card p { margin:0; }
+  .note { background:var(--warn-bg); color:var(--warn-fg); border-radius:8px; padding:10px 14px; font-size:15px; }
+  .cta { margin-top:44px; }
+  .cta h2 { margin-top:0; }
+  .yes { color: inherit; }
+  .no { color: var(--muted); }
+  footer { padding: 30px 0 50px; color: var(--muted); font-size: 14px; border-top:1px solid var(--line); }
+  footer a { margin-right:14px; display:inline-block; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <nav><a class="brand" href="/">⬡ DocForge</a><div><a href="/#demo">Demo</a><a href="/#pricing">Pricing</a><a href="/docs">Docs</a><a href="/guides/">Guides</a></div></nav>
+  <main>
+    <p class="crumbs"><a href="/guides/">Guides</a></p>
+<h1>Laravel HTML to PDF: dompdf, Snappy, Browsershot or an API?</h1>
+<p class="lead">You already have a Blade view for the invoice. The question is which engine turns it into a PDF, and what that costs you in CSS support, server setup and maintenance.</p>
+
+<h2 id="options">The four options</h2>
+<div class="tablewrap"><table>
+<thead><tr><th></th><th>dompdf (barryvdh/laravel-dompdf)</th><th>Snappy (wkhtmltopdf)</th><th>Browsershot (spatie)</th><th>DocForge API</th></tr></thead>
+<tbody>
+<tr><td>Engine</td><td>Pure PHP layout engine</td><td>wkhtmltopdf binary on an old QtWebKit</td><td>Puppeteer driving headless Chromium</td><td>Headless Chromium, hosted</td></tr>
+<tr><td>Install</td><td>composer only</td><td>composer + a system binary</td><td>composer + Node, npm puppeteer and Chromium on every server</td><td>Nothing; an HTTP call</td></tr>
+<tr><td>Modern CSS (flexbox, grid, web fonts)</td><td>Limited: no flexbox or grid</td><td>Limited: old WebKit</td><td>Yes</td><td>Yes</td></tr>
+<tr><td>Maintenance status</td><td>Active</td><td>wkhtmltopdf's GitHub repository was archived on 2023-01-02</td><td>Active</td><td>Active (new service)</td></tr>
+<tr><td>Works on shared hosting / serverless</td><td>Yes</td><td>Often not</td><td>Hard: Chromium needs memory and a writable home</td><td>Yes</td></tr>
+<tr><td>Cost</td><td>Free</td><td>Free</td><td>Free, plus the RAM and CPU Chromium uses</td><td>Free tier, then about $<span data-plan-per1k="starter">…</span> per 1,000 PDFs on Starter</td></tr>
+<tr><td>Your data</td><td>Stays on your server</td><td>Stays on your server</td><td>Stays on your server</td><td>Sent over HTTPS, rendered in memory, not stored (<a href="/privacy">privacy</a>)</td></tr>
+</tbody></table></div>
+<p><b>Pick dompdf</b> if your layout is simple tables and you never want an external dependency. <b>Avoid starting new work on Snappy</b>: the engine is unmaintained. <b>Pick Browsershot</b> if you control the servers and are happy to keep Chromium patched. <b>Pick an API</b> if you want Chrome-quality output from shared hosting, Laravel Vapor or a small VPS without running a browser.</p>
+
+<h2 id="setup">Setup</h2>
+<pre># .env
+DOCFORGE_URL=https://YOUR-DOMAIN
+DOCFORGE_KEY=df_live_...</pre>
+<pre>// config/services.php
+'docforge' =&gt; [
+    'url' =&gt; env('DOCFORGE_URL'),
+    'key' =&gt; env('DOCFORGE_KEY'),
+],</pre>
+
+<h2 id="controller">Render your Blade view</h2>
+<p>Send the HTML Blade already produced with <code>"raw": true</code>: DocForge skips its own Handlebars step, so <code>{{</code> left in your markup is printed literally. <code>base_url</code> resolves relative links such as <code>/images/logo.png</code> and <code>/build/assets/app.css</code>.</p>
+<div class="codehead"><span class="muted">app/Http/Controllers/InvoicePdfController.php</span><button class="btn ghost small" type="button" data-copy="laravelController">Copy</button></div>
+<pre id="laravelController">&lt;?php
+
+namespace App\Http\Controllers;
+
+use App\Models\Invoice;
+use Illuminate\Http\Client\ConnectionException;
+use Illuminate\Http\Client\RequestException;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
+
+class InvoicePdfController extends Controller
+{
+    public function __invoke(Invoice $invoice)
+    {
+        $html = view('invoices.pdf', ['invoice' =&gt; $invoice])-&gt;render();
+
+        try {
+            $response = Http::withToken(config('services.docforge.key'))
+                -&gt;timeout(45)
+                // Retry the temporary failures (429 concurrency_limit, 503 busy) twice.
+                -&gt;retry(3, 2000, fn ($e) =&gt; $e instanceof RequestException
+                    &amp;&amp; in_array($e-&gt;response-&gt;status(), [429, 503]), throw: false)
+                -&gt;post(config('services.docforge.url').'/v1/render', [
+                    'html' =&gt; $html,
+                    'raw' =&gt; true,
+                    'base_url' =&gt; config('app.url'), // must be https
+                    'filename' =&gt; &quot;invoice-{$invoice-&gt;number}.pdf&quot;,
+                    'options' =&gt; [
+                        'format' =&gt; 'a4',
+                        'footer_html' =&gt; '&lt;div style=&quot;font-size:9px;width:100%;text-align:center&quot;&gt;Page &lt;span class=&quot;pageNumber&quot;&gt;&lt;/span&gt; of &lt;span class=&quot;totalPages&quot;&gt;&lt;/span&gt;&lt;/div&gt;',
+                    ],
+                ]);
+        } catch (ConnectionException $e) {
+            report($e);
+            abort(503, 'The PDF service is unreachable. Try again in a minute.');
+        }
+
+        if ($response-&gt;failed()) {
+            Log::warning('DocForge render failed', [
+                'status' =&gt; $response-&gt;status(),
+                'error' =&gt; $response-&gt;json('error'),       // stable code, e.g. quota_exceeded
+                'message' =&gt; $response-&gt;json('message'),
+                'upgrade_url' =&gt; $response-&gt;json('upgrade_url'),
+                'request_id' =&gt; $response-&gt;json('request_id'), // quote this to support on a 500
+            ]);
+            abort(match ($response-&gt;json('error')) {
+                'quota_exceeded', 'busy', 'concurrency_limit' =&gt; 503,
+                default =&gt; 500,
+            }, 'Could not generate the PDF right now.');
+        }
+
+        if ($blocked = $response-&gt;header('X-DocForge-Blocked-Assets')) {
+            Log::notice(&quot;DocForge blocked {$blocked} asset(s)&quot;, [
+                'example' =&gt; $response-&gt;header('X-DocForge-Blocked-Asset-Example'),
+            ]);
+        }
+
+        return response($response-&gt;body(), 200, [
+            'Content-Type' =&gt; 'application/pdf',
+            'Content-Disposition' =&gt; &quot;inline; filename=\&quot;invoice-{$invoice-&gt;number}.pdf\&quot;&quot;,
+        ]);
+    }
+}</pre>
+
+<h2 id="assets">Images, fonts and CSS</h2>
+<ul>
+  <li>Assets are fetched only over <b>https from public IP addresses</b>, and only images, fonts and stylesheets. On <code>http://localhost</code> they are blocked, and the response header <code>X-DocForge-Blocked-Assets</code> tells you how many. In local development, inline the CSS in a <code>&lt;style&gt;</code> tag and use data: URIs for the logo.</li>
+  <li>JavaScript does not run. Draw charts server-side as SVG, or render them to an image first.</li>
+  <li>Use <code>@page</code> and <code>break-inside: avoid</code> in your print CSS; they work as in Chrome's print preview.</li>
+</ul>
+<p>Details: <a href="/docs#remote-assets">remote assets</a> and <a href="/docs#security">security</a>.</p>
+
+<h2 id="queue">Many PDFs? Queue them</h2>
+<p>Each plan renders a fixed number of PDFs in parallel; extra requests get <code>429 concurrency_limit</code>. Dispatch a queued job per document, store the result with <code>Storage::put("invoices/{$invoice->number}.pdf", $response->body())</code>, and set the queue's worker count to your plan's parallel-render limit.</p>
+
+<h2 id="templates">Or move the template server-side</h2>
+<p>If you would rather send only data, store a Handlebars template once with <code>POST /v1/templates</code> (or start from <a href="/guides/invoice-pdf-api">gallery:invoice</a>) and post <code>['template_id' => '...', 'data' => $invoice->toArray()]</code>. Blade's <code>{{ $x }}</code> becomes <code>{{x}}</code> and <code>@foreach</code> becomes <code>{{#each}}</code>.</p>
+<section class="cta card">
+  <h2>Try it with your own Blade view</h2>
+  <p class="muted">Free plan: <span data-plan-renders="free">100</span> PDFs a month with a small watermark, no card. Starter removes the watermark: <span data-plan-price="starter">see pricing</span>/month for <span data-plan-renders="starter">2,500</span> PDFs, about $<span data-plan-per1k="starter">…</span> per 1,000.</p>
+  <div class="row"><a class="btn" href="/?ref=guide-laravel-html-to-pdf#signup">Get a free API key</a><a class="btn ghost" href="/docs">Read the API docs</a></div>
+</section>
+  </main>
+  <footer>
+    <div>DocForge · <a data-support-email href="mailto:"></a></div>
+    <div style="margin-top:10px">
+      <a href="/docs">API docs</a><a href="/guides/">Guides</a><a href="/terms">Terms</a><a href="/privacy">Privacy</a><a href="/refunds">Refunds</a><a href="/security">Security</a>
+    </div>
+  </footer>
+</div>
+</body>
+</html>

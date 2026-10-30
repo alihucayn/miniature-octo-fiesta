@@ -4,33 +4,50 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>DocForge API Docs</title>
+<meta name="description" content="DocForge API reference: POST JSON and a Handlebars template to /v1/render and get a PDF back. Request fields, helpers, errors, limits, remote assets, security and no-code recipes for Make, n8n, Zapier and Bubble.">
+<link rel="canonical" href="https://YOUR-DOMAIN/docs">
+<meta property="og:type" content="website">
+<meta property="og:title" content="DocForge API Docs">
+<meta property="og:description" content="JSON + template in, PDF out. Full reference for the DocForge PDF API.">
+<meta property="og:url" content="https://YOUR-DOMAIN/docs">
+<meta property="og:image" content="https://YOUR-DOMAIN/assets/og.png">
+<meta name="twitter:card" content="summary_large_image">
+<script src="/assets/site.js" defer></script>
 <style>
   :root { --bg:#fafaf9; --fg:#1c1917; --muted:#57534e; --line:#e7e5e4; --code:#1c1917; --code-fg:#e7e5e4; --accent:#4f46e5; }
   @media (prefers-color-scheme: dark) { :root { --bg:#0c0a09; --fg:#f5f5f4; --muted:#a8a29e; --line:#292524; --code:#000; --accent:#818cf8; } }
   body { margin:0; background:var(--bg); color:var(--fg); font:16px/1.6 system-ui,-apple-system,sans-serif; }
-  main { max-width: 820px; margin: 0 auto; padding: 24px 20px 60px; }
+  main { max-width: 820px; margin: 0 auto; padding: 24px 16px 60px; }
   a { color: var(--accent); }
   h1 { letter-spacing:-1px; } h2 { margin-top: 40px; padding-top: 20px; border-top: 1px solid var(--line); letter-spacing:-.4px; }
   pre { background:var(--code); color:var(--code-fg); padding:14px; border-radius:10px; overflow:auto; font-size:13px; }
-  code { font-family: ui-monospace, Menlo, monospace; font-size: .9em; }
+  code { font-family: ui-monospace, Menlo, monospace; font-size: .9em; overflow-wrap: anywhere; }
   table { border-collapse: collapse; width: 100%; font-size: 14px; display: block; overflow-x: auto; }
   td, th { border-bottom: 1px solid var(--line); padding: 8px; text-align: left; vertical-align: top; }
   .muted { color: var(--muted); }
+  .toc { font-size: 14px; }
+  .copy { font: inherit; font-size: 13px; padding: 4px 10px; border: 1px solid var(--line); border-radius: 6px; background: transparent; color: var(--fg); cursor: pointer; }
+  footer { max-width: 820px; margin: 0 auto; padding: 20px 16px 40px; border-top: 1px solid var(--line); font-size: 14px; color: var(--muted); }
+  footer p:first-child { display:flex; flex-wrap:wrap; gap:6px 14px; }
+  footer a { margin-right:0; }
 </style>
 </head>
 <body>
 <main>
 <p><a href="/">← DocForge</a></p>
 <h1>API reference</h1>
-<p class="muted">Base URL: your DocForge domain. All requests and responses are JSON unless noted. Authenticate with <code>Authorization: Bearer df_live_…</code>.</p>
+<p class="muted">Machine-readable: <a href="/openapi.json">/openapi.json</a> (OpenAPI) · <a href="/llms.txt">/llms.txt</a> (for AI coding assistants)</p>
+<p>Base URL: <code>https://YOUR-DOMAIN</code>. All requests and responses are JSON unless noted. Authenticate with <code>Authorization: Bearer df_live_…</code>.</p>
+<p class="toc">On this page: <a href="#quick-start">Quick start</a> · <a href="#render">POST /v1/render</a> · <a href="#templates">Templates</a> · <a href="#helpers">Template language</a> · <a href="#errors">Errors</a> · <a href="#billing">Billing &amp; limits</a> · <a href="#keys">Keys</a> · <a href="#remote-assets">Remote assets</a> · <a href="#security">Security &amp; data</a> · <a href="#no-code">No-code</a></p>
 
-<h2>Quick start</h2>
+<h2 id="quick-start">Quick start</h2>
 <pre>curl -X POST https://YOUR-DOMAIN/v1/signup -H "Content-Type: application/json" -d '{"email":"you@company.com"}'
-# → {"api_key":"df_live_…"}
+# → {"api_key":"df_live_…","plan":"free",…}
 
-curl -X POST https://YOUR-DOMAIN/v1/render \
+curl --fail-with-body -X POST https://YOUR-DOMAIN/v1/render \
   -H "Authorization: Bearer df_live_…" -H "Content-Type: application/json" \
   -d '{"template_id":"gallery:receipt"}' -o receipt.pdf</pre>
+<p class="muted">Without <code>data</code>, a gallery template renders its sample data and the response carries <code>X-DocForge-Sample-Data: true</code>.</p>
 
 <h3>Node.js</h3>
 <pre>const res = await fetch('https://YOUR-DOMAIN/v1/render', {
@@ -38,28 +55,68 @@ curl -X POST https://YOUR-DOMAIN/v1/render \
   headers: { Authorization: `Bearer ${process.env.DOCFORGE_KEY}`, 'Content-Type': 'application/json' },
   body: JSON.stringify({ template_id: 'tpl_abc123', data: order }),
 });
+if (!res.ok) throw new Error(`DocForge ${res.status}: ${await res.text()}`);
 const pdf = Buffer.from(await res.arrayBuffer());</pre>
 
 <h3>Python</h3>
 <pre>import requests
-pdf = requests.post("https://YOUR-DOMAIN/v1/render",
+r = requests.post("https://YOUR-DOMAIN/v1/render",
     headers={"Authorization": f"Bearer {KEY}"},
-    json={"template_id": "gallery:invoice", "data": invoice}).content
-open("invoice.pdf", "wb").write(pdf)</pre>
+    json={"template_id": "gallery:invoice", "data": invoice},
+    timeout=30)
+r.raise_for_status()
+open("invoice.pdf", "wb").write(r.content)</pre>
 
-<h2>POST /v1/render</h2>
+<h3>PHP / Laravel</h3>
+<p class="muted">Render an existing Blade view. <code>raw: true</code> skips Handlebars (Blade already filled it in) and <code>base_url</code> resolves relative asset paths against your https site.</p>
+<pre>use Illuminate\Support\Facades\Http;
+
+$base = 'https://YOUR-DOMAIN';
+$pdf = Http::withToken(config('services.docforge.key'))
+    ->post($base.'/v1/render', [
+        'html' => view('pdf.invoice', $data)->render(),
+        'raw' => true,
+        'base_url' => url('/'),
+    ])
+    ->throw()
+    ->body();
+
+return response($pdf, 200, ['Content-Type' => 'application/pdf']);</pre>
+
+<h2 id="render">POST /v1/render</h2>
 <table>
 <tr><th>Field</th><th>Description</th></tr>
-<tr><td><code>template_id</code></td><td>A stored template (<code>tpl_…</code>) or a gallery template (<code>gallery:invoice</code>, <code>gallery:receipt</code>, <code>gallery:certificate</code>, <code>gallery:quote</code>, <code>gallery:packing-slip</code>).</td></tr>
-<tr><td><code>html</code>, <code>css</code></td><td>Inline Handlebars template, instead of <code>template_id</code>.</td></tr>
-<tr><td><code>data</code></td><td>Object passed to the template. Defaults to the template's sample data.</td></tr>
-<tr><td><code>options</code></td><td><code>format</code> (A4, Letter, Legal, A5, A3), <code>landscape</code>, <code>margin</code> ({top,right,bottom,left} as CSS lengths), <code>printBackground</code> (default true), <code>preferCSSPageSize</code>.</td></tr>
-<tr><td><code>output</code></td><td><code>"pdf"</code> (default, binary body) or <code>"base64"</code> (JSON with a <code>base64</code> field, handy in Zapier/Make).</td></tr>
-<tr><td><code>filename</code></td><td>Used in <code>Content-Disposition</code>.</td></tr>
+<tr><td><code>template_id</code></td><td>A stored template (<code>tpl_…</code>) or a gallery template (<code>gallery:invoice</code>, <code>gallery:receipt</code>, <code>gallery:certificate</code>, <code>gallery:quote</code>, <code>gallery:packing-slip</code>). Required unless you send <code>html</code>.</td></tr>
+<tr><td><code>html</code>, <code>css</code></td><td>Inline Handlebars template, instead of <code>template_id</code>. <code>css</code> is also run through Handlebars but is <strong>not HTML-escaped</strong>, so never put untrusted values into CSS.</td></tr>
+<tr><td><code>data</code></td><td>An object, or a JSON-encoded string of one (handy when a no-code tool only gives you text). Defaults to the template's sample data, flagged with the <code>X-DocForge-Sample-Data: true</code> response header.</td></tr>
+<tr><td><code>raw</code></td><td>Boolean, inline <code>html</code> only. Skips Handlebars and renders the HTML as-is, for HTML you already built (Blade, Jinja, React SSR).</td></tr>
+<tr><td><code>base_url</code></td><td><code>https://</code> only. Relative <code>src</code>/<code>href</code> in your HTML resolve against it. See <a href="#remote-assets">Remote assets</a>.</td></tr>
+<tr><td><code>filename</code></td><td>Used in <code>Content-Disposition</code> and in <code>output: "url"</code> links.</td></tr>
+<tr><td><code>output</code></td><td><code>"binary"</code> (default, PDF body), <code>"base64"</code> (JSON <code>{filename, content_type, size, base64}</code>) or <code>"url"</code> (JSON <code>{url, filename, size, expires_at, content_type}</code>; the link is <code>https://YOUR-DOMAIN/f/&lt;token&gt;/&lt;filename&gt;</code>, needs no auth and expires after 24 hours). <code>"url"</code> is the easiest output for Zapier, Make, n8n and Bubble.</td></tr>
+<tr><td><code>options.format</code></td><td>Case-insensitive: <code>A4</code> (default), <code>Letter</code>, <code>Legal</code>, <code>A5</code>, <code>A3</code>, <code>Tabloid</code>, <code>Ledger</code>.</td></tr>
+<tr><td><code>options.width</code>, <code>options.height</code></td><td>Custom page size as CSS lengths (e.g. <code>"100mm"</code>), instead of <code>format</code>.</td></tr>
+<tr><td><code>options.landscape</code></td><td>Boolean.</td></tr>
+<tr><td><code>options.margin</code></td><td><code>{top,right,bottom,left}</code> as CSS lengths. Default when absent: <code>14mm</code> / <code>12mm</code> / <code>16mm</code> / <code>12mm</code>. Use <code>0</code> for full-bleed (the certificate does).</td></tr>
+<tr><td><code>options.preferCSSPageSize</code></td><td>Boolean. Lets <code>@page { size: … }</code> in your CSS win over <code>format</code>.</td></tr>
+<tr><td><code>options.printBackground</code></td><td>Boolean, default true.</td></tr>
+<tr><td><code>options.header_html</code>, <code>options.footer_html</code></td><td>Repeated on every page, 16KB max each, rendered with your <code>data</code>. Chromium fills <code>&lt;span class="pageNumber"&gt;</code>, <code>totalPages</code>, <code>date</code> and <code>title</code>. Set <code>font-size</code> inline (page CSS does not apply there). Top/bottom margin is raised to at least 15mm when a header/footer is present. Invoice and quote ship a default page-number footer.</td></tr>
 </table>
-<p>Response header <code>X-Renders-Remaining</code> shows this month's remaining quota. Failed renders are not counted.</p>
+<pre>{
+  "template_id": "gallery:invoice",
+  "data": { "number": "INV-1042", "currency": "eur", "locale": "de-DE", "items": [] },
+  "output": "url",
+  "filename": "INV-1042.pdf",
+  "options": {
+    "format": "letter",
+    "footer_html": "&lt;div style=\"font-size:9px;width:100%;text-align:center\"&gt;Page &lt;span class=\"pageNumber\"&gt;&lt;/span&gt; of &lt;span class=\"totalPages\"&gt;&lt;/span&gt;&lt;/div&gt;"
+  }
+}</pre>
+<p>Response headers: <code>X-Renders-Limit</code>, <code>X-Renders-Remaining</code>, and while you are in the grace band <code>X-Quota-Warning: over_limit</code> plus <code>X-Upgrade-Url</code> (see <a href="#billing">Billing &amp; limits</a>). <code>X-DocForge-Blocked-Assets</code> reports skipped remote assets (see <a href="#remote-assets">Remote assets</a>).</p>
 
-<h2>Templates</h2>
+<h3>Non-Latin text and right-to-left</h3>
+<p>Noto fonts are preinstalled, including <code>'Noto Nastaliq Urdu'</code>, Arabic, CJK and Devanagari. For Urdu or Arabic, render a full document with <code>&lt;html lang="ur" dir="rtl"&gt;</code> and set <code>font-family: 'Noto Nastaliq Urdu', serif</code>. Inline your own font as a <code>data:</code> URI if you need a specific face.</p>
+
+<h2 id="templates">Templates</h2>
 <table>
 <tr><td><code>GET /v1/templates</code></td><td>List your templates.</td></tr>
 <tr><td><code>POST /v1/templates</code></td><td><code>{"name","html","css","sample_data"}</code>, or <code>{"from_gallery":"invoice"}</code> to copy a starter.</td></tr>
@@ -69,35 +126,193 @@ open("invoice.pdf", "wb").write(pdf)</pre>
 <tr><td><code>GET /v1/gallery</code></td><td>Built-in templates with sample data (no auth).</td></tr>
 </table>
 
-<h2>Template language</h2>
-<p>Templates are <a href="https://handlebarsjs.com/guide/">Handlebars</a>: <code>{{name}}</code>, <code>{{#each items}}…{{/each}}</code>, <code>{{#if paid}}…{{/if}}</code>. Values are HTML-escaped. Built-in helpers:</p>
+<h2 id="helpers">Template language</h2>
+<p>Templates are <a href="https://handlebarsjs.com/guide/">Handlebars</a>: <code>{{name}}</code>, <code>{{#each items}}…{{/each}}</code>, <code>{{#if paid}}…{{/if}}</code>. Values in HTML are escaped; values in <code>css</code> are not. Built-in helpers:</p>
 <table>
-<tr><td><code>{{money amount "EUR" "de-DE"}}</code></td><td>Currency formatting (currency and locale optional).</td></tr>
-<tr><td><code>{{date issued "long"}}</code></td><td>Date formatting: short, medium (default), long, full.</td></tr>
-<tr><td><code>{{sum items "qty" "price"}}</code></td><td>Sum of qty×price over a list. With one field, sums that field.</td></tr>
+<tr><td><code>{{money amount "eur" "de-DE"}}</code></td><td>Currency formatting. Currency (upper-cased for you) and locale are optional. Amounts are major units; for Stripe-style cents use <code>{{money (div amount_paid 100) currency}}</code>.</td></tr>
+<tr><td><code>{{date issued "long" "en-GB" "Asia/Karachi"}}</code><br><code>{{date issued "short" locale="en-US" tz="America/New_York"}}</code></td><td>Date formatting: <code>short</code>, <code>medium</code> (default), <code>long</code>, <code>full</code>. Accepts ISO strings, epoch milliseconds and epoch seconds (numbers below 1e12, as Stripe sends). <code>"now"</code> is the current time; a missing value prints nothing.</td></tr>
+<tr><td><code>{{sum items "qty" "price"}}</code></td><td>Sum of qty×price over a list. With one field, sums that field. A missing field counts as 1, so a line without <code>qty</code> counts once.</td></tr>
+<tr><td><code>{{qr payment_url size=120}}</code></td><td>QR code as inline SVG. <code>size</code> in px, 32–400, default 96.</td></tr>
 <tr><td><code>add</code>, <code>sub</code>, <code>mul</code>, <code>div</code>, <code>percent</code>, <code>fixed</code></td><td>Arithmetic, e.g. <code>{{money (mul qty price) ../currency}}</code>.</td></tr>
 <tr><td><code>eq</code>, <code>gt</code>, <code>default</code>, <code>upper</code>, <code>lower</code>, <code>inc</code></td><td>Comparisons and string helpers. <code>{{inc @index}}</code> gives 1-based row numbers.</td></tr>
 </table>
 <p class="muted">A data field named like a helper (e.g. <code>date</code>) is shadowed by the helper when written alone; use <code>{{this.date}}</code> to read the field.</p>
-<p>Images and fonts load over <code>https://</code> or as <code>data:</code> URIs. JavaScript inside templates is disabled.</p>
+<p>JavaScript inside templates is disabled. Images, fonts and stylesheets load as described in <a href="#remote-assets">Remote assets</a>.</p>
 
-<h2>Account &amp; billing</h2>
+<h2 id="errors">Errors</h2>
+<p>Errors are JSON: <code>{"error":"&lt;code&gt;","message":"…"}</code>. Branch on <code>error</code>, show <code>message</code>.</p>
 <table>
-<tr><td><code>GET /v1/me</code></td><td>Plan, usage this month and limits.</td></tr>
-<tr><td><code>POST /v1/keys/rotate</code></td><td>Issue a new key and revoke the old one.</td></tr>
-<tr><td><code>GET /v1/billing/checkout?plan=starter</code></td><td>Returns a checkout URL tied to your account (starter, pro, business).</td></tr>
-<tr><td><code>GET /v1/plans</code></td><td>Plans and limits.</td></tr>
+<tr><th>HTTP</th><th>error</th><th>Meaning</th></tr>
+<tr><td>400</td><td><code>invalid_data</code>, <code>invalid_base_url</code>, <code>invalid_option</code>, <code>missing_template</code>, <code>invalid_json</code></td><td>Fix the request; <code>message</code> names the field.</td></tr>
+<tr><td>401</td><td><code>unauthorized</code></td><td>Missing or invalid API key.</td></tr>
+<tr><td>402</td><td><code>quota_exceeded</code>, <code>template_limit</code></td><td>Plan limit reached. The body includes <code>upgrade_url</code> (pricing page) and <code>upgrade_urls</code> (<code>{starter?, pro?, business?}</code>: direct checkout links for the plans above yours, already tied to your account).</td></tr>
+<tr><td>403</td><td><code>account_suspended</code></td><td>Contact support.</td></tr>
+<tr><td>404</td><td><code>template_not_found</code></td><td>Unknown <code>tpl_…</code> id, or it belongs to another account.</td></tr>
+<tr><td>409</td><td><code>email_taken</code>, <code>already_subscribed</code></td><td>Signup with an existing email (recover the key at <a href="/#recover">/#recover</a>), or checkout while already on a paid plan (the body has <code>manage_url</code>).</td></tr>
+<tr><td>422</td><td><code>template_error</code>, <code>template_too_expensive</code>, <code>too_many_pages</code></td><td>Handlebars syntax error (message points at the line); template took too long to fill in; PDF above your plan's page limit.</td></tr>
+<tr><td>429</td><td><code>rate_limited</code>, <code>concurrency_limit</code>, <code>demo_busy</code></td><td>Too many requests, too many renders in flight for your plan, or the public demo is busy. Back off and retry.</td></tr>
+<tr><td>503</td><td><code>busy</code></td><td>Render queue is full. Retry after the <code>Retry-After</code> header (5 seconds).</td></tr>
+<tr><td>504</td><td><code>render_timeout</code></td><td>The page took longer than 30 seconds to render (usually slow remote assets).</td></tr>
+<tr><td>500</td><td><code>render_failed</code></td><td>Our fault. Send us the <code>request_id</code> from the body.</td></tr>
 </table>
+<p><strong>What counts against your quota:</strong> failed requests are refunded, except <code>render_timeout</code>, <code>too_many_pages</code> and <code>template_too_expensive</code>, which did the full rendering work and count as one render.</p>
+<p>Safe to retry automatically: <code>429</code>, <code>503</code> and <code>500</code>, with backoff. Do not retry <code>4xx</code> validation errors unchanged.</p>
 
-<h2>Errors</h2>
+<h2 id="billing">Billing &amp; limits</h2>
+<p>Live values from <a href="/v1/plans"><code>GET /v1/plans</code></a>:</p>
 <table>
-<tr><td>400</td><td>Invalid input (<code>invalid_json</code>, <code>missing_template</code>, <code>invalid_template</code>)</td></tr>
-<tr><td>401</td><td>Missing or invalid API key</td></tr>
-<tr><td>402</td><td><code>quota_exceeded</code> or <code>template_limit</code>: upgrade your plan</td></tr>
-<tr><td>404</td><td>Template not found</td></tr>
-<tr><td>422</td><td><code>template_error</code>: Handlebars syntax error, message points at the line</td></tr>
-<tr><td>429</td><td>Rate limited</td></tr>
+<tr><th>Plan</th><th>Price / month</th><th>Renders / month</th><th>Per 1,000</th><th>Templates</th><th>Concurrent renders</th><th>Max pages / PDF</th></tr>
+<tr><td>Free</td><td><span data-plan-price="free">–</span></td><td><span data-plan-renders="free">–</span></td><td>–</td><td>3</td><td>1</td><td>20</td></tr>
+<tr><td>Starter</td><td><span data-plan-price="starter">–</span></td><td><span data-plan-renders="starter">–</span></td><td><span data-plan-per1k="starter">–</span></td><td>20</td><td>2</td><td>200</td></tr>
+<tr><td>Pro</td><td><span data-plan-price="pro">–</span></td><td><span data-plan-renders="pro">–</span></td><td><span data-plan-per1k="pro">–</span></td><td>100</td><td>3</td><td>500</td></tr>
+<tr><td>Business</td><td><span data-plan-price="business">–</span></td><td><span data-plan-renders="business">–</span></td><td><span data-plan-per1k="business">–</span></td><td>500</td><td>4</td><td>500</td></tr>
 </table>
+<ul>
+<li>Free PDFs carry a small "Made with DocForge" footer; paid plans have none.</li>
+<li><strong>Grace band:</strong> paid plans keep rendering for an extra 10% of their monthly renders, so a busy day does not stop your invoices. While you are in it, responses carry <code>X-Quota-Warning: over_limit</code> and <code>X-Upgrade-Url</code>. After that you get <code>402 quota_exceeded</code>. Free has no grace band.</li>
+<li>Every render returns <code>X-Renders-Limit</code> (your monthly renders) and <code>X-Renders-Remaining</code> (never below 0). Usage resets on the 1st of each month (UTC).</li>
+<li>Concurrency is per account; extra parallel requests get <code>429 concurrency_limit</code>.</li>
+</ul>
+<table>
+<tr><td><code>GET /v1/me</code></td><td>Plan, status, usage this month, limits, <code>renders_grace</code> and <code>upgrade_urls</code>.</td></tr>
+<tr><td><code>GET /v1/billing/checkout?plan=starter</code></td><td><code>200 {checkout_url}</code> tied to your account (<code>starter</code>, <code>pro</code>, <code>business</code>); <code>400 unknown_plan</code>; <code>409 already_subscribed</code> with <code>manage_url</code>.</td></tr>
+<tr><td><code>GET /v1/plans</code></td><td>Plans and limits (no auth).</td></tr>
+</table>
+<p>Payments are handled by Lemon Squeezy. <a href="https://app.lemonsqueezy.com/my-orders">Manage or cancel your subscription</a> there; plan changes apply to your key automatically. See the <a href="/refunds">refund policy</a>.</p>
+
+<h2 id="keys">Keys</h2>
+<table>
+<tr><td><code>POST /v1/keys/rotate</code></td><td>Issue a new key and revoke the old one immediately. Returns <code>{api_key}</code>.</td></tr>
+<tr><td><code>POST /v1/keys/recover</code></td><td><code>{"email":"you@company.com"}</code> → always <code>202 {message}</code>. If the account exists, we email a link to <code>https://YOUR-DOMAIN/#recover=&lt;token&gt;</code>, valid 30 minutes, single use.</td></tr>
+<tr><td><code>POST /v1/keys/recover/confirm</code></td><td><code>{"token":"…"}</code> → <code>200 {api_key, message}</code> (a new key; the old one stops working) or <code>400 invalid_token</code>. The landing page does this for you.</td></tr>
+</table>
+<p class="muted">We only store a SHA-256 hash of your key, so we cannot show it again. Lost it? Use <a href="/#recover">key recovery</a>.</p>
+
+<h2 id="remote-assets">Remote assets</h2>
+<ul>
+<li>Only <code>https://</code> URLs load. <code>http://</code>, <code>file://</code> and private, loopback and link-local networks (including cloud metadata addresses) are blocked, even via redirects or DNS.</li>
+<li>Only images, fonts and stylesheets load. No scripts, iframes, objects or embeds.</li>
+<li><strong>Recommended:</strong> inline logos and fonts as <code>data:</code> URIs. They never fail, never slow a render, and make output deterministic.</li>
+<li>Slow assets count toward the 30-second render deadline (<code>504 render_timeout</code>, which counts as a render).</li>
+<li>Skipped assets do not fail the render. Binary responses carry <code>X-DocForge-Blocked-Assets: &lt;n&gt;</code> and <code>X-DocForge-Blocked-Asset-Example: &lt;url&gt;</code>; JSON outputs (<code>base64</code>, <code>url</code>) include <code>warnings.blocked_assets</code>. Check them in development so a missing logo does not go unnoticed.</li>
+</ul>
+
+<h2 id="security">Security &amp; data</h2>
+<ul>
+<li>PDFs are rendered in memory and returned in the response. We do not keep your rendered documents or the <code>data</code> you send, except <code>output: "url"</code> files, which are deleted after 24 hours.</li>
+<li>Stored: your email, a SHA-256 hash of your API key, your saved templates, monthly render counts and the signup source (how you found us).</li>
+<li>Each render runs in a fresh browser context with JavaScript disabled, and remote requests go through the <a href="#remote-assets">asset filter</a>.</li>
+<li>The account database is snapshotted daily.</li>
+<li>Lemon Squeezy is the merchant of record: it handles payment details and sales tax; we never see your card.</li>
+</ul>
+<p>More detail: <a href="/security">Security</a> · <a href="/privacy">Privacy policy</a>. Report a vulnerability to <a data-support-email href="mailto:"></a>.</p>
+
+<h2 id="no-code">No-code</h2>
+<p>Every recipe uses <code>output: "url"</code>: DocForge returns a 24-hour public link that the tool can fetch or attach. Store your API key in the tool's secret/credential field, not in plain text.</p>
+
+<h3>Make: Stripe invoice paid → PDF receipt by Gmail</h3>
+<ol>
+<li><strong>Stripe › Watch events</strong>, event <code>invoice.paid</code>.</li>
+<li><strong>HTTP › Make a request</strong>: URL <code>https://YOUR-DOMAIN/v1/render</code>, method POST, header <code>Authorization: Bearer df_live_…</code>, body type Raw, content type JSON, "Parse response" on. Body:
+<pre>{
+  "template_id": "gallery:receipt",
+  "output": "url",
+  "filename": "receipt-{{1.number}}.pdf",
+  "data": {
+    "merchant": "Your Company",
+    "number": "{{1.number}}",
+    "paid_at": {{1.status_transitions.paid_at}},
+    "customer_email": "{{1.customer_email}}",
+    "amount_paid": {{1.amount_paid}},
+    "currency": "{{1.currency}}",
+    "locale": "en-US",
+    "lines": {{3.json}}
+  }
+}</pre>
+<span class="muted">Module numbers in <code>{{…}}</code> are illustrative; pick the values from Make's mapping panel.</span><br>Field mapping from the Stripe invoice:
+<table>
+<tr><th>Stripe invoice</th><th>Receipt field</th></tr>
+<tr><td><code>number</code></td><td><code>number</code></td></tr>
+<tr><td><code>customer_email</code></td><td><code>customer_email</code></td></tr>
+<tr><td><code>amount_paid</code> (cents)</td><td><code>amount_paid</code> (cents; the template divides by 100)</td></tr>
+<tr><td><code>currency</code> (<code>usd</code>)</td><td><code>currency</code> (any case)</td></tr>
+<tr><td><code>status_transitions.paid_at</code> (epoch seconds)</td><td><code>paid_at</code></td></tr>
+<tr><td><code>lines.data[]</code>: <code>description</code>, <code>amount</code>, <code>quantity</code></td><td><code>lines[]</code>: <code>description</code>, <code>amount</code> (cents), <code>quantity</code></td></tr>
+</table>
+Build <code>lines</code> before this module (shown as module 3 here, between Stripe and HTTP): an <strong>Iterator</strong> over <code>lines.data</code>, an <strong>Array aggregator</strong> with <code>description</code>, <code>amount</code> and <code>quantity</code>, and <strong>JSON › Create JSON</strong> to turn the array into text. Alternatively build the whole <code>data</code> object with Create JSON and pass its text as <code>"data"</code>; a JSON-encoded string is accepted.</li>
+<li><strong>HTTP › Get a file</strong> with URL <code>{{2.data.url}}</code>.</li>
+<li><strong>Gmail › Send an email</strong> to <code>{{1.customer_email}}</code>, attachment = the file from step 3 (file name <code>{{2.data.filename}}</code>).</li>
+</ol>
+
+<h3>n8n: new order → PDF → email</h3>
+<p><strong>WooCommerce Trigger</strong> (order.created) or <strong>Airtable Trigger</strong> → <strong>HTTP Request</strong> (POST, JSON body, Response Format <em>File</em>, so the PDF arrives as binary <code>data</code>) → <strong>Send Email</strong> with attachment <code>data</code>. Paste this into the n8n canvas, then set your key on the <em>Header Auth</em> credential (name <code>Authorization</code>, value <code>Bearer df_live_…</code>):</p>
+<p><button class="copy" type="button" data-copy="n8n-workflow">Copy workflow JSON</button></p>
+<pre id="n8n-workflow">{
+  "name": "DocForge invoice on new order",
+  "nodes": [
+    {
+      "parameters": { "event": "order.created" },
+      "name": "WooCommerce Trigger",
+      "type": "n8n-nodes-base.wooCommerceTrigger",
+      "typeVersion": 1,
+      "position": [0, 0]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://YOUR-DOMAIN/v1/render",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ template_id: 'gallery:invoice', filename: 'invoice-' + $json.number + '.pdf', data: { number: String($json.number), issue_date: $json.date_created, currency: $json.currency, client: { name: $json.billing.first_name + ' ' + $json.billing.last_name, email: $json.billing.email }, items: $json.line_items.map(i =&gt; ({ description: i.name, qty: i.quantity, price: Number(i.price) })) } }) }}",
+        "options": { "response": { "response": { "responseFormat": "file" } } }
+      },
+      "name": "DocForge render",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [240, 0]
+    },
+    {
+      "parameters": {
+        "fromEmail": "billing@yourshop.com",
+        "toEmail": "={{ $('WooCommerce Trigger').item.json.billing.email }}",
+        "subject": "=Your invoice {{ $('WooCommerce Trigger').item.json.number }}",
+        "text": "Thanks for your order. Your invoice is attached.",
+        "options": { "attachments": "data" }
+      },
+      "name": "Send Email",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2,
+      "position": [480, 0]
+    }
+  ],
+  "connections": {
+    "WooCommerce Trigger": { "main": [[{ "node": "DocForge render", "type": "main", "index": 0 }]] },
+    "DocForge render": { "main": [[{ "node": "Send Email", "type": "main", "index": 0 }]] }
+  }
+}</pre>
+<p class="muted">Field names follow the <code>gallery:invoice</code> sample (<code>number</code>, <code>issue_date</code>, <code>client</code>, <code>items[].description/qty/price</code>); <code>GET /v1/gallery/invoice</code> shows the full shape, including <code>company</code> and <code>due_date</code>. For Airtable, map record fields the same way.</p>
+
+<h3>Zapier</h3>
+<ol>
+<li>Any trigger (new Stripe charge, new Typeform entry, new row in Google Sheets…).</li>
+<li><strong>Webhooks by Zapier › POST</strong>: URL <code>https://YOUR-DOMAIN/v1/render</code>, Payload Type <code>json</code>, Data: <code>template_id</code> = <code>gallery:receipt</code>, <code>output</code> = <code>url</code>, and <code>data__number</code>, <code>data__customer_email</code>, … for fields (double underscores nest them under <code>data</code>). Headers: <code>Authorization</code> = <code>Bearer df_live_…</code>.</li>
+<li>Gmail / Outlook <strong>Send Email</strong>: map the webhook step's <code>url</code> into the Attachments field. Zapier downloads the file from the link.</li>
+</ol>
+
+<h3>Bubble</h3>
+<ol>
+<li><strong>API Connector</strong> › Add another API, name it DocForge. Authentication: <em>Private key in header</em>, key name <code>Authorization</code>, value <code>Bearer df_live_…</code> (shared header, never sent to the browser).</li>
+<li>Add a call: <code>POST https://YOUR-DOMAIN/v1/render</code>, <strong>Use as: Action</strong>, body type JSON:
+<pre>{ "template_id": "&lt;template_id&gt;", "output": "url", "data": &lt;data&gt; }</pre>
+Make <code>&lt;data&gt;</code> a dynamic parameter holding JSON text (e.g. built with <code>:format as text</code>); untick "Private" so workflows can set it. Initialize the call once with sample values.</li>
+<li>In a workflow, run the DocForge action and use <em>Result of step 1's url</em> to open, store or email the PDF. The link lasts 24 hours, so save the file to Bubble storage if you need it longer.</li>
+</ol>
 </main>
+<footer>
+<p><a href="/">DocForge</a><a href="/docs">Docs</a><a href="/terms">Terms</a><a href="/privacy">Privacy</a><a href="/refunds">Refunds</a><a href="/security">Security</a></p>
+<p>Questions: <a data-support-email href="mailto:"></a></p>
+</footer>
 </body>
 </html>

@@ -1,0 +1,1787 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "DocForge PDF API",
+    "version": "1.0.0",
+    "description": "Render PDFs from JSON + a template (stored or gallery:*) or from inline HTML/Handlebars. Authenticate with \"Authorization: Bearer <api key>\". Human docs: /docs."
+  },
+  "servers": [
+    {
+      "url": "/"
+    }
+  ],
+  "security": [
+    {
+      "bearerAuth": []
+    }
+  ],
+  "tags": [
+    {
+      "name": "Render"
+    },
+    {
+      "name": "Templates"
+    },
+    {
+      "name": "Gallery"
+    },
+    {
+      "name": "Account"
+    },
+    {
+      "name": "Public"
+    }
+  ],
+  "paths": {
+    "/v1/signup": {
+      "post": {
+        "tags": [
+          "Public"
+        ],
+        "summary": "Create a Free account and API key",
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "email"
+                ],
+                "properties": {
+                  "email": {
+                    "type": "string",
+                    "format": "email"
+                  },
+                  "source": {
+                    "type": "string",
+                    "maxLength": 100,
+                    "description": "Attribution, e.g. a ref or utm_source"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "api_key": {
+                      "type": "string",
+                      "description": "Shown once"
+                    },
+                    "plan": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "upgrade_urls": {
+                      "$ref": "#/components/schemas/UpgradeUrls"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "invalid_email",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "invalid_email": {
+                    "value": {
+                      "error": "invalid_email",
+                      "message": "..."
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "email_taken",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "email_taken": {
+                    "value": {
+                      "error": "email_taken",
+                      "message": "..."
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "rate_limited",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "rate_limited": {
+                    "value": {
+                      "error": "rate_limited",
+                      "message": "..."
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/plans": {
+      "get": {
+        "tags": [
+          "Public"
+        ],
+        "summary": "Plans, prices and limits",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "plans": {
+                      "type": "object",
+                      "additionalProperties": {
+                        "$ref": "#/components/schemas/Plan"
+                      }
+                    },
+                    "support_email": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "public_url": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/render": {
+      "post": {
+        "tags": [
+          "Render"
+        ],
+        "summary": "Render a PDF",
+        "description": "Provide template_id (a stored template id or gallery:invoice, gallery:receipt, gallery:certificate, gallery:quote, gallery:packing-slip) or inline html. Without data, a template renders its sample data and X-DocForge-Sample-Data: true is set. Every failure releases its quota reservation except render_timeout, too_many_pages and template_too_expensive.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RenderRequest"
+              },
+              "examples": {
+                "gallery": {
+                  "value": {
+                    "template_id": "gallery:invoice",
+                    "data": {
+                      "number": "INV-001",
+                      "items": [
+                        {
+                          "description": "Consulting",
+                          "qty": 4,
+                          "price": 120
+                        }
+                      ]
+                    }
+                  }
+                },
+                "raw": {
+                  "value": {
+                    "html": "<h1>Hello</h1>",
+                    "raw": true,
+                    "options": {
+                      "format": "letter"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The PDF (output binary), or JSON for output base64/url",
+            "headers": {
+              "X-Renders-Limit": {
+                "description": "Monthly renders on your plan",
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-Renders-Remaining": {
+                "description": "Renders left this month (never below 0)",
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-Quota-Warning": {
+                "description": "over_limit while inside the grace band",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "X-Upgrade-Url": {
+                "description": "Checkout link for the next plan, while inside the grace band",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "X-DocForge-Sample-Data": {
+                "description": "true when the template sample data was used",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "X-DocForge-Blocked-Assets": {
+                "description": "Number of blocked remote requests",
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-DocForge-Blocked-Asset-Example": {
+                "description": "One blocked URL",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/pdf": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/Base64Output"
+                    },
+                    {
+                      "$ref": "#/components/schemas/UrlOutput"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "invalid_data, invalid_base_url, invalid_option, missing_template, invalid_json, template_too_large",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "invalid_data": {
+                    "value": {
+                      "error": "invalid_data",
+                      "message": "..."
+                    }
+                  },
+                  "invalid_base_url": {
+                    "value": {
+                      "error": "invalid_base_url",
+                      "message": "..."
+                    }
+                  },
+                  "invalid_option": {
+                    "value": {
+                      "error": "invalid_option",
+                      "message": "..."
+                    }
+                  },
+                  "missing_template": {
+                    "value": {
+                      "error": "missing_template",
+                      "message": "..."
+                    }
+                  },
+                  "invalid_json": {
+                    "value": {
+                      "error": "invalid_json",
+                      "message": "..."
+                    }
+                  },
+                  "template_too_large": {
+                    "value": {
+                      "error": "template_too_large",
+                      "message": "..."
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "402": {
+            "description": "quota_exceeded: monthly renders plus grace used up",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Upsell"
+                }
+              }
+            }
+          },
+          "403": {
+            "$ref": "#/components/responses/Suspended"
+          },
+          "404": {
+            "description": "template_not_found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "template_not_found": {
+                    "value": {
+                      "error": "template_not_found",
+                      "message": "..."
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "template_error, template_too_expensive, too_many_pages",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "template_error": {
+                    "value": {
+                      "error": "template_error",
+                      "message": "..."
+                    }
+                  },
+                  "template_too_expensive": {
+                    "value": {
+                      "error": "template_too_expensive",
+                      "message": "..."
+                    }
+                  },
+                  "too_many_pages": {
+                    "value": {
+                      "error": "too_many_pages",
+                      "message": "..."
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "rate_limited, concurrency_limit",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "rate_limited": {
+                    "value": {
+                      "error": "rate_limited",
+                      "message": "..."
+                    }
+                  },
+                  "concurrency_limit": {
+                    "value": {
+                      "error": "concurrency_limit",
+                      "message": "..."
+                    }
+                  }
+                }
+              }
+            },
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "render_failed (quote request_id to support)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServerError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "busy",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "busy": {
+                    "value": {
+                      "error": "busy",
+                      "message": "..."
+                    }
+                  }
+                }
+              }
+            },
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait (5)",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "render_timeout",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "render_timeout": {
+                    "value": {
+                      "error": "render_timeout",
+                      "message": "..."
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/templates": {
+      "get": {
+        "tags": [
+          "Templates"
+        ],
+        "summary": "List stored templates",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "templates": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Template"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Templates"
+        ],
+        "summary": "Create a template (or copy a gallery template with from_gallery)",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "oneOf": [
+                  {
+                    "$ref": "#/components/schemas/TemplateInput"
+                  },
+                  {
+                    "type": "object",
+                    "required": [
+                      "from_gallery"
+                    ],
+                    "properties": {
+                      "from_gallery": {
+                        "type": "string",
+                        "example": "invoice"
+                      },
+                      "name": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Template"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "invalid_template",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "invalid_template": {
+                    "value": {
+                      "error": "invalid_template",
+                      "message": "..."
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "402": {
+            "description": "template_limit",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Upsell"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "gallery_template_not_found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "gallery_template_not_found": {
+                    "value": {
+                      "error": "gallery_template_not_found",
+                      "message": "..."
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/templates/{id}": {
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "get": {
+        "tags": [
+          "Templates"
+        ],
+        "summary": "Get a template",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Template"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "description": "not_found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "not_found": {
+                    "value": {
+                      "error": "not_found",
+                      "message": "..."
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Templates"
+        ],
+        "summary": "Update a template (partial)",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "minProperties": 1,
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "maxLength": 200
+                  },
+                  "html": {
+                    "type": "string"
+                  },
+                  "css": {
+                    "type": "string"
+                  },
+                  "sample_data": {
+                    "type": "object"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Template"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "invalid_template",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "invalid_template": {
+                    "value": {
+                      "error": "invalid_template",
+                      "message": "..."
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "description": "not_found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "not_found": {
+                    "value": {
+                      "error": "not_found",
+                      "message": "..."
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Templates"
+        ],
+        "summary": "Delete a template",
+        "responses": {
+          "204": {
+            "description": "Deleted"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "description": "not_found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "not_found": {
+                    "value": {
+                      "error": "not_found",
+                      "message": "..."
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/gallery": {
+      "get": {
+        "tags": [
+          "Gallery"
+        ],
+        "summary": "List built-in templates with sample data",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "templates": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/GallerySummary"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/gallery/{id}": {
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "description": "Without the gallery: prefix",
+          "schema": {
+            "type": "string",
+            "enum": [
+              "invoice",
+              "receipt",
+              "certificate",
+              "quote",
+              "packing-slip"
+            ]
+          }
+        }
+      ],
+      "get": {
+        "tags": [
+          "Gallery"
+        ],
+        "summary": "Get a built-in template including html and css",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GalleryTemplate"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "not_found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "not_found": {
+                    "value": {
+                      "error": "not_found",
+                      "message": "..."
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/me": {
+      "get": {
+        "tags": [
+          "Account"
+        ],
+        "summary": "Account, plan and usage this month",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Me"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Suspended"
+          }
+        }
+      }
+    },
+    "/v1/billing/checkout": {
+      "get": {
+        "tags": [
+          "Account"
+        ],
+        "summary": "Checkout link for a paid plan",
+        "parameters": [
+          {
+            "name": "plan",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "starter",
+                "pro",
+                "business"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "checkout_url": {
+                      "type": "string",
+                      "format": "uri"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "unknown_plan",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "const": "unknown_plan"
+                    },
+                    "plans": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "409": {
+            "description": "already_subscribed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "const": "already_subscribed"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "manage_url": {
+                      "type": "string",
+                      "format": "uri",
+                      "example": "https://app.lemonsqueezy.com/my-orders"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/keys/rotate": {
+      "post": {
+        "tags": [
+          "Account"
+        ],
+        "summary": "Replace your API key; the old key stops working",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "api_key": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
+        }
+      }
+    },
+    "/v1/keys/recover": {
+      "post": {
+        "tags": [
+          "Public"
+        ],
+        "summary": "Email a 30-minute, single-use recovery link (always 202)",
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "email"
+                ],
+                "properties": {
+                  "email": {
+                    "type": "string",
+                    "format": "email"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Accepted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "rate_limited",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "rate_limited": {
+                    "value": {
+                      "error": "rate_limited",
+                      "message": "..."
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/keys/recover/confirm": {
+      "post": {
+        "tags": [
+          "Public"
+        ],
+        "summary": "Exchange a recovery token for a new API key",
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "token"
+                ],
+                "properties": {
+                  "token": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "api_key": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "invalid_token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "invalid_token": {
+                    "value": {
+                      "error": "invalid_token",
+                      "message": "..."
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "rate_limited",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "rate_limited": {
+                    "value": {
+                      "error": "rate_limited",
+                      "message": "..."
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/demo/render": {
+      "post": {
+        "tags": [
+          "Public"
+        ],
+        "summary": "Watermarked demo render of a gallery template (no key, 5 pages max)",
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "template_id"
+                ],
+                "properties": {
+                  "template_id": {
+                    "type": "string",
+                    "enum": [
+                      "gallery:invoice",
+                      "gallery:receipt",
+                      "gallery:certificate",
+                      "gallery:quote",
+                      "gallery:packing-slip"
+                    ]
+                  },
+                  "data": {
+                    "oneOf": [
+                      {
+                        "type": "object"
+                      },
+                      {
+                        "type": "string"
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Watermarked PDF",
+            "content": {
+              "application/pdf": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "demo_supports_gallery_only, invalid_data",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "demo_supports_gallery_only": {
+                    "value": {
+                      "error": "demo_supports_gallery_only",
+                      "message": "..."
+                    }
+                  },
+                  "invalid_data": {
+                    "value": {
+                      "error": "invalid_data",
+                      "message": "..."
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "template_error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "template_error": {
+                    "value": {
+                      "error": "template_error",
+                      "message": "..."
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "demo_busy, rate_limited",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "demo_busy": {
+                    "value": {
+                      "error": "demo_busy",
+                      "message": "..."
+                    }
+                  },
+                  "rate_limited": {
+                    "value": {
+                      "error": "rate_limited",
+                      "message": "..."
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "render_failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServerError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "busy",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "busy": {
+                    "value": {
+                      "error": "busy",
+                      "message": "..."
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "description": "Your API key, e.g. Authorization: Bearer df_live_..."
+      }
+    },
+    "responses": {
+      "Unauthorized": {
+        "description": "unauthorized",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Error"
+            },
+            "examples": {
+              "unauthorized": {
+                "value": {
+                  "error": "unauthorized",
+                  "message": "..."
+                }
+              }
+            }
+          }
+        }
+      },
+      "Suspended": {
+        "description": "account_suspended",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Error"
+            },
+            "examples": {
+              "account_suspended": {
+                "value": {
+                  "error": "account_suspended",
+                  "message": "..."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "schemas": {
+      "Error": {
+        "type": "object",
+        "required": [
+          "error"
+        ],
+        "properties": {
+          "error": {
+            "type": "string",
+            "description": "Stable machine-readable code"
+          },
+          "message": {
+            "type": "string"
+          }
+        }
+      },
+      "ServerError": {
+        "type": "object",
+        "properties": {
+          "error": {
+            "const": "render_failed"
+          },
+          "message": {
+            "type": "string"
+          },
+          "request_id": {
+            "type": "string"
+          }
+        }
+      },
+      "UpgradeUrls": {
+        "type": "object",
+        "description": "Checkout links for configured plans above the current one",
+        "properties": {
+          "starter": {
+            "type": "string",
+            "format": "uri"
+          },
+          "pro": {
+            "type": "string",
+            "format": "uri"
+          },
+          "business": {
+            "type": "string",
+            "format": "uri"
+          }
+        }
+      },
+      "Upsell": {
+        "type": "object",
+        "properties": {
+          "error": {
+            "type": "string",
+            "enum": [
+              "quota_exceeded",
+              "template_limit"
+            ]
+          },
+          "message": {
+            "type": "string"
+          },
+          "upgrade_url": {
+            "type": "string",
+            "format": "uri",
+            "description": "<PUBLIC_URL>/#pricing"
+          },
+          "upgrade_urls": {
+            "$ref": "#/components/schemas/UpgradeUrls"
+          }
+        }
+      },
+      "Plan": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "priceUsd": {
+            "type": "number"
+          },
+          "monthlyRenders": {
+            "type": "integer"
+          },
+          "templates": {
+            "type": "integer"
+          },
+          "watermark": {
+            "type": "boolean"
+          },
+          "graceRenders": {
+            "type": "integer"
+          },
+          "concurrency": {
+            "type": "integer"
+          },
+          "maxPages": {
+            "type": "integer"
+          }
+        }
+      },
+      "Margin": {
+        "oneOf": [
+          {
+            "type": "string",
+            "example": "12mm"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "top": {
+                "type": "string"
+              },
+              "right": {
+                "type": "string"
+              },
+              "bottom": {
+                "type": "string"
+              },
+              "left": {
+                "type": "string"
+              }
+            }
+          }
+        ]
+      },
+      "RenderOptions": {
+        "type": "object",
+        "description": "Merged over the template defaults. Without margin, 14mm/12mm/16mm/12mm is used; header_html/footer_html force at least 15mm.",
+        "properties": {
+          "format": {
+            "type": "string",
+            "description": "Case-insensitive",
+            "enum": [
+              "a4",
+              "letter",
+              "legal",
+              "a5",
+              "a3",
+              "tabloid",
+              "ledger"
+            ]
+          },
+          "width": {
+            "type": [
+              "string",
+              "number"
+            ],
+            "example": "210mm",
+            "description": "px number or a string in px, in, cm or mm"
+          },
+          "height": {
+            "type": [
+              "string",
+              "number"
+            ],
+            "example": "297mm"
+          },
+          "landscape": {
+            "type": "boolean"
+          },
+          "margin": {
+            "$ref": "#/components/schemas/Margin"
+          },
+          "preferCSSPageSize": {
+            "type": "boolean"
+          },
+          "printBackground": {
+            "type": "boolean"
+          },
+          "header_html": {
+            "type": "string",
+            "description": "Chromium header template; use <span class=\"pageNumber\"></span> and <span class=\"totalPages\"></span>"
+          },
+          "footer_html": {
+            "type": "string"
+          }
+        }
+      },
+      "RenderRequest": {
+        "type": "object",
+        "properties": {
+          "template_id": {
+            "type": "string",
+            "description": "Stored template id or gallery:<name>"
+          },
+          "html": {
+            "type": "string",
+            "description": "Inline Handlebars/HTML (max 512KB with css)"
+          },
+          "css": {
+            "type": "string"
+          },
+          "data": {
+            "oneOf": [
+              {
+                "type": "object"
+              },
+              {
+                "type": "string",
+                "description": "JSON-encoded object"
+              }
+            ]
+          },
+          "raw": {
+            "type": "boolean",
+            "default": false,
+            "description": "Inline html only: skip Handlebars and render the HTML as sent"
+          },
+          "base_url": {
+            "type": "string",
+            "format": "uri",
+            "description": "https only; resolves relative asset URLs"
+          },
+          "filename": {
+            "type": "string",
+            "default": "document.pdf"
+          },
+          "output": {
+            "type": "string",
+            "enum": [
+              "binary",
+              "base64",
+              "url"
+            ],
+            "default": "binary"
+          },
+          "options": {
+            "$ref": "#/components/schemas/RenderOptions"
+          }
+        }
+      },
+      "Base64Output": {
+        "type": "object",
+        "properties": {
+          "filename": {
+            "type": "string"
+          },
+          "content_type": {
+            "const": "application/pdf"
+          },
+          "size": {
+            "type": "integer"
+          },
+          "base64": {
+            "type": "string"
+          },
+          "warnings": {
+            "$ref": "#/components/schemas/Warnings"
+          }
+        }
+      },
+      "UrlOutput": {
+        "type": "object",
+        "properties": {
+          "url": {
+            "type": "string",
+            "format": "uri",
+            "description": "<PUBLIC_URL>/f/<32-char token>/<filename>; public, valid 24 hours"
+          },
+          "filename": {
+            "type": "string"
+          },
+          "size": {
+            "type": "integer"
+          },
+          "expires_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "content_type": {
+            "const": "application/pdf"
+          },
+          "warnings": {
+            "$ref": "#/components/schemas/Warnings"
+          }
+        }
+      },
+      "Warnings": {
+        "type": "object",
+        "properties": {
+          "blocked_assets": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "TemplateInput": {
+        "type": "object",
+        "required": [
+          "name",
+          "html"
+        ],
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 200
+          },
+          "html": {
+            "type": "string"
+          },
+          "css": {
+            "type": "string"
+          },
+          "sample_data": {
+            "type": "object"
+          }
+        }
+      },
+      "Template": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "example": "tpl_abc123"
+          },
+          "name": {
+            "type": "string"
+          },
+          "html": {
+            "type": "string"
+          },
+          "css": {
+            "type": "string"
+          },
+          "sample_data": {
+            "type": "object"
+          },
+          "created_at": {
+            "type": "string"
+          },
+          "updated_at": {
+            "type": "string"
+          }
+        }
+      },
+      "GallerySummary": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "example": "gallery:invoice"
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "sample_data": {
+            "type": "object"
+          },
+          "options": {
+            "$ref": "#/components/schemas/RenderOptions"
+          }
+        }
+      },
+      "GalleryTemplate": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/GallerySummary"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "html": {
+                "type": "string"
+              },
+              "css": {
+                "type": "string"
+              }
+            }
+          }
+        ]
+      },
+      "Me": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string"
+          },
+          "plan": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "active",
+              "suspended"
+            ]
+          },
+          "key_prefix": {
+            "type": "string"
+          },
+          "month": {
+            "type": "string",
+            "example": "2026-10"
+          },
+          "renders_used": {
+            "type": "integer"
+          },
+          "renders_limit": {
+            "type": "integer"
+          },
+          "renders_grace": {
+            "type": "integer"
+          },
+          "templates_used": {
+            "type": "integer"
+          },
+          "templates_limit": {
+            "type": "integer"
+          },
+          "upgrade_urls": {
+            "$ref": "#/components/schemas/UpgradeUrls"
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta name="robots" content="noindex">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PDFMonkey alternative: DocForge PDF API compared</title>
+<meta name="description" content="An honest comparison of DocForge and PDFMonkey: cost per 1,000 PDFs, templating, features DocForge does not have yet, and how to port your templates.">
+<link rel="canonical" href="https://YOUR-DOMAIN/guides/pdfmonkey-alternative">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="DocForge">
+<meta property="og:title" content="PDFMonkey alternative: DocForge PDF API compared">
+<meta property="og:description" content="An honest comparison of DocForge and PDFMonkey: cost per 1,000 PDFs, templating, features DocForge does not have yet, and how to port your templates.">
+<meta property="og:url" content="https://YOUR-DOMAIN/guides/pdfmonkey-alternative">
+<meta property="og:image" content="https://YOUR-DOMAIN/assets/og.png">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath d='M16 2 28 9v14L16 30 4 23V9z' fill='%234f46e5'/%3E%3Cpath d='M11 10h7l4 4v8H11z' fill='%23fff'/%3E%3C/svg%3E">
+<script src="/assets/site.js" defer></script>
+<style>
+  :root { --bg:#fafaf9; --fg:#1c1917; --muted:#57534e; --line:#e7e5e4; --card:#fff; --accent:#4f46e5; --accent-fg:#fff; --code:#1c1917; --code-fg:#e7e5e4; --err:#b91c1c; --warn-bg:#fef3c7; --warn-fg:#78350f; }
+  @media (prefers-color-scheme: dark) { :root { --bg:#0c0a09; --fg:#f5f5f4; --muted:#a8a29e; --line:#292524; --card:#1c1917; --accent:#818cf8; --accent-fg:#0c0a09; --code:#000; --err:#f87171; --warn-bg:#422006; --warn-fg:#fde68a; } }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--fg); font:16px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif; }
+  a { color: var(--accent); }
+  .wrap { max-width: 1080px; margin: 0 auto; padding: 0 16px; }
+  nav { display:flex; justify-content:space-between; align-items:center; padding:18px 0; gap:12px; flex-wrap:wrap; }
+  nav .brand { font-size:18px; font-weight:700; letter-spacing:-.3px; margin:0; }
+  nav a { margin-left:18px; color:var(--fg); text-decoration:none; font-size:14px; }
+  nav div a:first-child { margin-left:0; }
+  main { max-width: 820px; padding: 24px 0 48px; }
+  .crumbs { font-size:14px; color:var(--muted); margin:0 0 12px; }
+  h1 { font-size: clamp(28px, 4.5vw, 42px); line-height:1.1; letter-spacing:-1px; margin:0 0 14px; }
+  h2 { font-size: 24px; letter-spacing:-.4px; margin:40px 0 8px; }
+  h3 { font-size: 18px; margin:24px 0 6px; }
+  .lead { font-size: 19px; color: var(--muted); }
+  .muted { color: var(--muted); }
+  .btn { display:inline-block; background:var(--accent); color:var(--accent-fg); border:0; border-radius:8px; padding:11px 18px; font:600 15px system-ui; cursor:pointer; text-decoration:none; text-align:center; }
+  .btn.ghost { background:transparent; color:var(--fg); border:1px solid var(--line); }
+  .btn.small { padding:6px 12px; font-size:13px; }
+  .btn[disabled] { opacity:.6; cursor:progress; }
+  .row { display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
+  pre { background:var(--code); color:var(--code-fg); padding:16px; border-radius:10px; overflow:auto; font-size:13px; line-height:1.5; margin:0 0 16px; }
+  pre[contenteditable] { outline: 1px dashed transparent; }
+  pre[contenteditable]:focus { outline-color: var(--accent); }
+  code { font: 13.5px ui-monospace, Menlo, monospace; }
+  pre code { font-size: inherit; }
+  .codehead { display:flex; justify-content:space-between; align-items:center; gap:10px; margin:16px 0 6px; font-size:13px; }
+  .tablewrap { overflow-x:auto; margin: 12px 0 16px; }
+  table { border-collapse: collapse; width:100%; font-size:15px; }
+  th, td { text-align:left; padding:9px 10px; border-bottom:1px solid var(--line); vertical-align:top; }
+  th { font-size:13px; color:var(--muted); font-weight:600; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:20px; }
+  .grid { display:grid; gap:16px; grid-template-columns: repeat(auto-fit, minmax(230px,1fr)); }
+  .grid .card h3 { margin:0 0 6px; font-size:17px; }
+  .grid .card p { margin:0; }
+  .note { background:var(--warn-bg); color:var(--warn-fg); border-radius:8px; padding:10px 14px; font-size:15px; }
+  .cta { margin-top:44px; }
+  .cta h2 { margin-top:0; }
+  .yes { color: inherit; }
+  .no { color: var(--muted); }
+  footer { padding: 30px 0 50px; color: var(--muted); font-size: 14px; border-top:1px solid var(--line); }
+  footer a { margin-right:14px; display:inline-block; }
+</style>
+</head>
+<body>
+<!-- TODO(founder): competitor prices and features below were taken from public pages and are NOT verified. Re-check every figure on the linked pricing page, replace [TODO YYYY-MM] with the month you checked, and re-check every 3 months. Never publish a competitor figure you have not seen yourself. -->
+<div class="wrap">
+  <nav><a class="brand" href="/">⬡ DocForge</a><div><a href="/#demo">Demo</a><a href="/#pricing">Pricing</a><a href="/docs">Docs</a><a href="/guides/">Guides</a></div></nav>
+  <main>
+    <p class="crumbs"><a href="/guides/">Guides</a></p>
+<h1>DocForge as a PDFMonkey alternative for invoice and receipt PDFs</h1>
+<p class="lead">PDFMonkey is a solid template-based PDF service built on Liquid and asynchronous document jobs. If you mostly generate billing documents and want the PDF back in the same HTTP response at a lower cost per document, DocForge is worth a look.</p>
+<p class="note">Competitor prices were checked [TODO YYYY-MM]. Verify them on <a href="https://pdfmonkey.io/pricing/" rel="nofollow noopener" target="_blank">PDFMonkey's pricing page</a>; they change. DocForge prices below are live from our pricing API.</p>
+
+<h2 id="cost">Cost per 1,000 PDFs</h2>
+<!-- TODO(founder): re-check the PDFMonkey figures on https://pdfmonkey.io/pricing/ before publishing and after any price change, then replace [TODO YYYY-MM]. -->
+<div class="tablewrap"><table>
+<thead><tr><th>Plan</th><th>Price / month</th><th>PDFs / month</th><th>Cost per 1,000 PDFs</th></tr></thead>
+<tbody>
+<tr><td>DocForge Starter</td><td><span data-plan-price="starter">see pricing</span></td><td><span data-plan-renders="starter">…</span></td><td>$<span data-plan-per1k="starter">…</span></td></tr>
+<tr><td>DocForge Pro</td><td><span data-plan-price="pro">see pricing</span></td><td><span data-plan-renders="pro">…</span></td><td>$<span data-plan-per1k="pro">…</span></td></tr>
+<tr><td>DocForge Business</td><td><span data-plan-price="business">see pricing</span></td><td><span data-plan-renders="business">…</span></td><td>$<span data-plan-per1k="business">…</span></td></tr>
+<tr><td>PDFMonkey entry paid plan</td><td>€19 (checked [TODO YYYY-MM], verify)</td><td>300 (verify)</td><td>about €63 (verify)</td></tr>
+</tbody></table></div>
+<p class="muted">DocForge's Free plan gives <span data-plan-renders="free">100</span> watermarked PDFs a month. Paid plans add a 10% grace band before renders return HTTP 402, and template syntax errors do not count. PDFMonkey figures: prices checked [TODO YYYY-MM], verify on <a href="https://pdfmonkey.io/pricing/" rel="nofollow noopener" target="_blank">pdfmonkey.io/pricing/</a>.</p>
+
+<h2 id="features">Feature comparison, including what DocForge lacks</h2>
+<div class="tablewrap"><table>
+<thead><tr><th></th><th>DocForge</th><th>PDFMonkey (verify on their docs)</th></tr></thead>
+<tbody>
+<tr><td>Ready-made templates</td><td>Invoice, receipt, certificate, quote, packing slip (<a href="/guides/">guides</a>)</td><td>Template library (verify)</td></tr>
+<tr><td>Template language</td><td>Handlebars, with money, date, sum and qr helpers</td><td>Liquid</td></tr>
+<tr><td>Visual drag-and-drop editor</td><td><span class="no">No. Code only, with a live demo to preview</span></td><td>Code editor with live preview (verify)</td></tr>
+<tr><td>Async jobs and webhooks</td><td><span class="no">No. Synchronous only: the PDF comes back in the response (30 s deadline)</span></td><td>Yes: documents are generated as jobs, with webhooks (verify)</td></tr>
+<tr><td>Merge PDFs / append existing PDFs</td><td><span class="no">No</span></td><td>Check their docs</td></tr>
+<tr><td>URL to PDF (render a live web page)</td><td><span class="no">No. HTML or a stored template only</span></td><td>Check their docs</td></tr>
+<tr><td>Send your own HTML</td><td>Yes, <code>html</code> with <code>raw: true</code></td><td>Templates built in their editor (verify)</td></tr>
+<tr><td>Hosted download link</td><td><code>output: "url"</code>, valid 24 hours</td><td>Download URL on the document (verify)</td></tr>
+<tr><td>Free tier</td><td><span data-plan-renders="free">100</span> PDFs/month, small watermark</td><td>Check their pricing page</td></tr>
+<tr><td>Over quota</td><td>10% grace on paid plans, then HTTP 402</td><td>Check their docs</td></tr>
+<tr><td>Billing</td><td>Monthly, cancel anytime; Lemon Squeezy is merchant of record</td><td>Check their pricing page</td></tr>
+<tr><td>Track record</td><td><span class="no">New service run by one independent developer</span></td><td>Longer track record</td></tr>
+</tbody></table></div>
+<p><b>Where PDFMonkey is the better choice:</b> if you need a visual template editor for non-developers, asynchronous jobs with webhooks for very large batches, or PDF merging, DocForge does not do that today. <b>Where DocForge fits:</b> developers sending invoices, receipts, certificates, quotes and packing slips who want a synchronous API, ready-made templates and a lower price per document.</p>
+<h2 id="async">Moving from async jobs to a synchronous call</h2>
+<p>With PDFMonkey you create a document, then wait for a webhook or poll until it is ready. With DocForge the PDF is the response to <code>POST /v1/render</code>, so the polling code goes away. For links instead of bytes, add <code>"output": "url"</code>. For big batches, call it from a background worker, one request per document, within your plan's parallel-render limit.</p>
+<h2 id="port">Port your template</h2>
+<p>DocForge templates are <a href="https://handlebarsjs.com/guide/">Handlebars</a>, not Liquid. Most templates port line by line with this map (Jinja-style <code>{% for %}</code>/<code>{% if %}</code> templates follow the same rules):</p>
+<div class="tablewrap"><table>
+<thead><tr><th>Liquid</th><th>DocForge (Handlebars)</th></tr></thead>
+<tbody>
+<tr><td><code>{{ customer.name }}</code></td><td><code>{{customer.name}}</code></td></tr>
+<tr><td><code>{% if paid %}…{% else %}…{% endif %}</code></td><td><code>{{#if paid}}…{{else}}…{{/if}}</code></td></tr>
+<tr><td><code>{% unless paid %}…{% endunless %}</code></td><td><code>{{#unless paid}}…{{/unless}}</code></td></tr>
+<tr><td><code>{% if status == &quot;paid&quot; %}</code></td><td><code>{{#if (eq status &quot;paid&quot;)}}</code></td></tr>
+<tr><td><code>{% if total &gt; 0 %}</code></td><td><code>{{#if (gt total 0)}}</code></td></tr>
+<tr><td><code>{% for item in items %}{{ item.price }}{% endfor %}</code></td><td><code>{{#each items}}{{price}}{{/each}}</code></td></tr>
+<tr><td><code>{{ currency }} inside a for loop</code></td><td><code>{{../currency}} (one level up from the loop item)</code></td></tr>
+<tr><td><code>{{ forloop.index }}</code></td><td><code>{{inc @index}}</code></td></tr>
+<tr><td><code>{% if forloop.first %}</code></td><td><code>{{#if @first}}</code></td></tr>
+<tr><td><code>{{ price | times: qty }}</code></td><td><code>{{mul price qty}}</code></td></tr>
+<tr><td><code>{{ a | plus: b }} / minus / divided_by</code></td><td><code>{{add a b}} / {{sub a b}} / {{div a b}}</code></td></tr>
+<tr><td><code>{{ total | round: 2 }}</code></td><td><code>{{fixed total 2}}</code></td></tr>
+<tr><td><code>{{ total | money }}</code></td><td><code>{{money total currency locale}}</code></td></tr>
+<tr><td><code>{{ issued_at | date: &quot;%B %-d, %Y&quot; }}</code></td><td><code>{{date issued_at &quot;long&quot; locale}}</code></td></tr>
+<tr><td><code>{{ name | upcase }} / downcase</code></td><td><code>{{upper name}} / {{lower name}}</code></td></tr>
+<tr><td><code>{{ note | default: &quot;-&quot; }}</code></td><td><code>{{default note &quot;-&quot;}}</code></td></tr>
+<tr><td><code>{{ trusted_html }} (Liquid prints raw)</code></td><td><code>{{{trusted_html}}} (Handlebars escapes {{ }}; triple braces print raw)</code></td></tr>
+<tr><td><code>{% assign subtotal = ... %}</code></td><td><code>No assignments: compute the value in your code and send it in data</code></td></tr>
+<tr><td><code>{%- ... -%} (trim whitespace)</code></td><td><code>{{~ ... ~}}</code></td></tr>
+</tbody></table></div>
+<p>Then store it once and render it by id. The test render below uses your <code>sample_data</code>, because no <code>data</code> is sent:</p>
+<div class="codehead"><span class="muted">Store and test</span><button class="btn ghost small" type="button" data-copy="port-pdfmonkey">Copy</button></div>
+<pre id="port-pdfmonkey"># 1. Store the ported template (HTML and CSS as JSON strings)
+jq -n --rawfile html invoice.hbs --rawfile css invoice.css \
+  '{name: &quot;Invoice&quot;, html: $html, css: $css, sample_data: {number: &quot;INV-001&quot;, items: [{description: &quot;Test&quot;, qty: 1, price: 10}]}}' \
+  | curl https://YOUR-DOMAIN/v1/templates \
+      -H &quot;Authorization: Bearer $DOCFORGE_KEY&quot; \
+      -H &quot;Content-Type: application/json&quot; --data-binary @-
+# -&gt; {&quot;id&quot;: &quot;tpl_...&quot;, &quot;name&quot;: &quot;Invoice&quot;, ...}
+
+# 2. Render it with its sample data
+curl https://YOUR-DOMAIN/v1/render \
+  -H &quot;Authorization: Bearer $DOCFORGE_KEY&quot; \
+  -H &quot;Content-Type: application/json&quot; \
+  -d '{&quot;template_id&quot;: &quot;&lt;id from step 1&gt;&quot;}' -o test.pdf</pre>
+<p class="muted">A template error comes back as <code>422 template_error</code> with the Handlebars message and does not use a render. <code>PUT /v1/templates/&lt;id&gt;</code> updates it in place. If you would rather keep templating in your own app, send the finished HTML with <code>"html": "...", "raw": true</code> instead.</p>
+<section class="cta card">
+  <h2>Try DocForge next to PDFMonkey</h2>
+  <p class="muted">Free plan: <span data-plan-renders="free">100</span> PDFs a month with a small watermark, no card. Starter removes the watermark: <span data-plan-price="starter">see pricing</span>/month for <span data-plan-renders="starter">2,500</span> PDFs, about $<span data-plan-per1k="starter">…</span> per 1,000.</p>
+  <div class="row"><a class="btn" href="/?ref=pdfmonkey-alt#signup">Get a free API key</a><a class="btn ghost" href="/docs">Read the API docs</a></div>
+</section>
+  </main>
+  <footer>
+    <div>DocForge · <a data-support-email href="mailto:"></a></div>
+    <div style="margin-top:10px">
+      <a href="/docs">API docs</a><a href="/guides/">Guides</a><a href="/terms">Terms</a><a href="/privacy">Privacy</a><a href="/refunds">Refunds</a><a href="/security">Security</a>
+    </div>
+  </footer>
+</div>
+</body>
+</html>

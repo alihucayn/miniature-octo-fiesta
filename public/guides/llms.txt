@@ -1,0 +1,39 @@
+# DocForge
+
+> DocForge is a JSON-to-PDF API. POST JSON plus a template id (a stored template or a built-in gallery:* template), or inline HTML/Handlebars, to /v1/render and get a PDF rendered by headless Chromium. Built for invoices, receipts, certificates, quotes and packing slips.
+
+## Basics
+- Base URL: the site origin (e.g. https://YOUR-DOMAIN). Machine-readable spec: /openapi.json. Human docs: /docs. Guides: /guides/.
+- Auth header: Authorization: Bearer <api key>. Get a free key: POST /v1/signup {"email": "..."}.
+- Render: POST /v1/render {template_id | html, css, data, raw, base_url, filename, output: "binary"|"base64"|"url", options: {format, landscape, margin, header_html, footer_html, ...}}.
+- Without data, a template renders its sample data (header X-DocForge-Sample-Data: true). See sample data at GET /v1/gallery/<name>.
+- output "url" returns {url, filename, size, expires_at, content_type}; the link is public for 24 hours.
+- Usage: X-Renders-Remaining header, or GET /v1/me. Plans and prices: GET /v1/plans.
+- Templates are Handlebars with helpers money, date, sum, qr, add, sub, mul, div, percent, fixed, eq, gt, upper, lower, default, inc.
+- Remote assets: https and public IPs only; images, fonts and CSS only; JavaScript is disabled.
+
+## One call per gallery template
+- Invoice: curl -X POST $DOCFORGE_URL/v1/render -H "Authorization: Bearer $DOCFORGE_KEY" -H "Content-Type: application/json" -d '{"template_id":"gallery:invoice"}' -o invoice.pdf
+- Receipt: curl -X POST $DOCFORGE_URL/v1/render -H "Authorization: Bearer $DOCFORGE_KEY" -H "Content-Type: application/json" -d '{"template_id":"gallery:receipt"}' -o receipt.pdf
+- Certificate of completion: curl -X POST $DOCFORGE_URL/v1/render -H "Authorization: Bearer $DOCFORGE_KEY" -H "Content-Type: application/json" -d '{"template_id":"gallery:certificate"}' -o certificate.pdf
+- Quote / estimate: curl -X POST $DOCFORGE_URL/v1/render -H "Authorization: Bearer $DOCFORGE_KEY" -H "Content-Type: application/json" -d '{"template_id":"gallery:quote"}' -o quote.pdf
+- Packing slip: curl -X POST $DOCFORGE_URL/v1/render -H "Authorization: Bearer $DOCFORGE_KEY" -H "Content-Type: application/json" -d '{"template_id":"gallery:packing-slip"}' -o packing-slip.pdf
+
+## Error codes (HTTP status, error)
+- 400 invalid_data, invalid_base_url, invalid_option, missing_template, invalid_json, invalid_email, invalid_token
+- 401 unauthorized
+- 402 quota_exceeded, template_limit (body has upgrade_url and upgrade_urls)
+- 403 account_suspended
+- 404 template_not_found, not_found
+- 409 email_taken, already_subscribed
+- 422 template_error, template_too_expensive, too_many_pages
+- 429 rate_limited, concurrency_limit, demo_busy (respect Retry-After)
+- 503 busy (Retry-After: 5)
+- 504 render_timeout
+- 500 render_failed (includes request_id)
+Every failure releases its quota reservation except render_timeout, too_many_pages and template_too_expensive.
+
+## Guides
+- Invoice: /guides/invoice-pdf-api
+- Stripe receipts: /guides/stripe-invoice-pdf
+- Laravel: /guides/laravel-html-to-pdf

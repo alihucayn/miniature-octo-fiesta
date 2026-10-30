@@ -8,6 +8,8 @@ function openDb(file = process.env.DB_PATH || path.join(__dirname, '..', 'data',
   const db = new DatabaseSync(file);
   db.exec(`
     PRAGMA journal_mode = WAL;
+    PRAGMA busy_timeout = 5000;
+    PRAGMA foreign_keys = ON;
     CREATE TABLE IF NOT EXISTS accounts (
       id TEXT PRIMARY KEY,
       email TEXT NOT NULL UNIQUE,
@@ -34,7 +36,19 @@ function openDb(file = process.env.DB_PATH || path.join(__dirname, '..', 'data',
       renders INTEGER NOT NULL DEFAULT 0,
       PRIMARY KEY (account_id, month)
     );
+    CREATE TABLE IF NOT EXISTS recovery_tokens (
+      token_hash TEXT PRIMARY KEY,
+      account_id TEXT NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+      expires_at INTEGER NOT NULL
+    );
   `);
+  // Additive migrations; ALTER fails harmlessly once the column exists.
+  for (const sql of [
+    "ALTER TABLE accounts ADD COLUMN status TEXT NOT NULL DEFAULT 'active'",
+    'ALTER TABLE accounts ADD COLUMN source TEXT',
+  ]) {
+    try { db.exec(sql); } catch { /* already migrated */ }
+  }
   return db;
 }
 
@@ -47,13 +61,80 @@ class Store {
     this.db = db;
   }
 
-  createAccount(email) {
+  createAccount(email, { source = null } = {}) {
     const apiKey = `df_live_${crypto.randomBytes(24).toString('base64url')}`;
     const id = newId('acc');
+    const src = typeof source === 'string' && source.trim() ? source.trim().slice(0, 100) : null;
     this.db
-      .prepare('INSERT INTO accounts (id, email, key_hash, key_prefix) VALUES (?, ?, ?, ?)')
-      .run(id, email, hashKey(apiKey), apiKey.slice(0, 12));
-    return { id, email, apiKey, plan: 'free' };
+      .prepare('INSERT INTO accounts (id, email, key_hash, key_prefix, source) VALUES (?, ?, ?, ?, ?)')
+      .run(id, email, hashKey(apiKey), apiKey.slice(0, 12), src);
+    return { id, email, apiKey, plan: 'free', source: src };
+  }
+
+  accountById(id) {
+    return this.db.prepare('SELECT * FROM accounts WHERE id = ?').get(id);
+  }
+
+  setStatus(accountId, status) {
+    if (!['active', 'suspended'].includes(status)) throw new Error(`invalid status: ${status}`);
+    return this.db.prepare('UPDATE accounts SET status = ? WHERE id = ?').run(status, accountId).changes === 1;
+  }
+
+  // Returns the raw token for the email link; only its sha256 is stored.
+  createRecoveryToken(accountId, ttlMs = 30 * 60 * 1000) {
+    const token = crypto.randomBytes(24).toString('base64url');
+    const now = Date.now();
+    this.db.prepare('DELETE FROM recovery_tokens WHERE expires_at < ?').run(now);
+    this.db
+      .prepare('INSERT INTO recovery_tokens (token_hash, account_id, expires_at) VALUES (?, ?, ?)')
+      .run(hashKey(token), accountId, now + ttlMs);
+    return token;
+  }
+
+  // True when a recovery token was issued for this account within the last
+  // cooldownMs; used to cap recovery mails per account regardless of source IP.
+  recentRecovery(accountId, ttlMs = 30 * 60 * 1000, cooldownMs = 10 * 60 * 1000) {
+    return !!this.db
+      .prepare('SELECT 1 FROM recovery_tokens WHERE account_id = ? AND expires_at > ?')
+      .get(accountId, Date.now() + ttlMs - cooldownMs);
+  }
+
+  // Permanently removes an account and everything tied to it. Hosted
+  // output:'url' files are not linked to accounts and expire after 24h.
+  deleteAccount(accountId) {
+    this.db.exec('BEGIN');
+    try {
+      for (const t of ['templates', 'usage', 'recovery_tokens']) {
+        this.db.prepare(`DELETE FROM ${t} WHERE account_id = ?`).run(accountId);
+      }
+      const r = this.db.prepare('DELETE FROM accounts WHERE id = ?').run(accountId);
+      this.db.exec('COMMIT');
+      return r.changes > 0;
+    } catch (e) {
+      this.db.exec('ROLLBACK');
+      throw e;
+    }
+  }
+
+  // Single use: the row is deleted whether or not it has expired.
+  consumeRecoveryToken(token) {
+    if (typeof token !== 'string' || !token) return null;
+    const h = hashKey(token);
+    const row = this.db.prepare('SELECT account_id, expires_at FROM recovery_tokens WHERE token_hash = ?').get(h);
+    if (!row) return null;
+    this.db.prepare('DELETE FROM recovery_tokens WHERE token_hash = ?').run(h);
+    return row.expires_at >= Date.now() ? row.account_id : null;
+  }
+
+  // Online backup to <dir>/docforge-YYYY-MM-DD.db, keeping the newest 7.
+  snapshot(dir) {
+    fs.mkdirSync(dir, { recursive: true });
+    const file = path.join(dir, `docforge-${new Date().toISOString().slice(0, 10)}.db`);
+    fs.rmSync(file, { force: true });
+    this.db.exec(`VACUUM INTO '${file.replace(/'/g, "''")}'`);
+    const old = fs.readdirSync(dir).filter((f) => /^docforge-\d{4}-\d{2}-\d{2}\.db$/.test(f)).sort().reverse().slice(7);
+    for (const f of old) fs.rmSync(path.join(dir, f), { force: true });
+    return file;
   }
 
   rotateKey(accountId) {

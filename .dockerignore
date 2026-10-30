@@ -2,3 +2,10 @@ node_modules
 data
 .git
 *.pdf
+*.db
+.env
+.env.*
+!.env.example
+test
+docs
+# deploy/ is intentionally NOT ignored: deploy/admin.js runs inside the container.

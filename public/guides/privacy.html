@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Privacy Policy | DocForge</title>
+<meta name="description" content="What DocForge stores (email, hashed API key, templates, render counts) and what it does not: request data and PDFs are processed in memory and not retained.">
+<link rel="canonical" href="https://YOUR-DOMAIN/privacy">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="DocForge">
+<meta property="og:title" content="Privacy Policy | DocForge">
+<meta property="og:description" content="What DocForge stores (email, hashed API key, templates, render counts) and what it does not: request data and PDFs are processed in memory and not retained.">
+<meta property="og:url" content="https://YOUR-DOMAIN/privacy">
+<meta property="og:image" content="https://YOUR-DOMAIN/assets/og.png">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath d='M16 2 28 9v14L16 30 4 23V9z' fill='%234f46e5'/%3E%3Cpath d='M11 10h7l4 4v8H11z' fill='%23fff'/%3E%3C/svg%3E">
+<script src="/assets/site.js" defer></script>
+<style>
+  :root { --bg:#fafaf9; --fg:#1c1917; --muted:#57534e; --line:#e7e5e4; --card:#fff; --accent:#4f46e5; --accent-fg:#fff; --code:#1c1917; --code-fg:#e7e5e4; --err:#b91c1c; --warn-bg:#fef3c7; --warn-fg:#78350f; }
+  @media (prefers-color-scheme: dark) { :root { --bg:#0c0a09; --fg:#f5f5f4; --muted:#a8a29e; --line:#292524; --card:#1c1917; --accent:#818cf8; --accent-fg:#0c0a09; --code:#000; --err:#f87171; --warn-bg:#422006; --warn-fg:#fde68a; } }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--fg); font:16px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif; }
+  a { color: var(--accent); }
+  .wrap { max-width: 1080px; margin: 0 auto; padding: 0 16px; }
+  nav { display:flex; justify-content:space-between; align-items:center; padding:18px 0; gap:12px; flex-wrap:wrap; }
+  nav .brand { font-size:18px; font-weight:700; letter-spacing:-.3px; margin:0; }
+  nav a { margin-left:18px; color:var(--fg); text-decoration:none; font-size:14px; }
+  nav div a:first-child { margin-left:0; }
+  main { max-width: 820px; padding: 24px 0 48px; }
+  .crumbs { font-size:14px; color:var(--muted); margin:0 0 12px; }
+  h1 { font-size: clamp(28px, 4.5vw, 42px); line-height:1.1; letter-spacing:-1px; margin:0 0 14px; }
+  h2 { font-size: 24px; letter-spacing:-.4px; margin:40px 0 8px; }
+  h3 { font-size: 18px; margin:24px 0 6px; }
+  .lead { font-size: 19px; color: var(--muted); }
+  .muted { color: var(--muted); }
+  .btn { display:inline-block; background:var(--accent); color:var(--accent-fg); border:0; border-radius:8px; padding:11px 18px; font:600 15px system-ui; cursor:pointer; text-decoration:none; text-align:center; }
+  .btn.ghost { background:transparent; color:var(--fg); border:1px solid var(--line); }
+  .btn.small { padding:6px 12px; font-size:13px; }
+  .btn[disabled] { opacity:.6; cursor:progress; }
+  .row { display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
+  pre { background:var(--code); color:var(--code-fg); padding:16px; border-radius:10px; overflow:auto; font-size:13px; line-height:1.5; margin:0 0 16px; }
+  pre[contenteditable] { outline: 1px dashed transparent; }
+  pre[contenteditable]:focus { outline-color: var(--accent); }
+  code { font: 13.5px ui-monospace, Menlo, monospace; }
+  pre code { font-size: inherit; }
+  .codehead { display:flex; justify-content:space-between; align-items:center; gap:10px; margin:16px 0 6px; font-size:13px; }
+  .tablewrap { overflow-x:auto; margin: 12px 0 16px; }
+  table { border-collapse: collapse; width:100%; font-size:15px; }
+  th, td { text-align:left; padding:9px 10px; border-bottom:1px solid var(--line); vertical-align:top; }
+  th { font-size:13px; color:var(--muted); font-weight:600; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:20px; }
+  .grid { display:grid; gap:16px; grid-template-columns: repeat(auto-fit, minmax(230px,1fr)); }
+  .grid .card h3 { margin:0 0 6px; font-size:17px; }
+  .grid .card p { margin:0; }
+  .note { background:var(--warn-bg); color:var(--warn-fg); border-radius:8px; padding:10px 14px; font-size:15px; }
+  .cta { margin-top:44px; }
+  .cta h2 { margin-top:0; }
+  .yes { color: inherit; }
+  .no { color: var(--muted); }
+  footer { padding: 30px 0 50px; color: var(--muted); font-size: 14px; border-top:1px solid var(--line); }
+  footer a { margin-right:14px; display:inline-block; }
+</style>
+</head>
+<body>
+<!-- TODO(founder): fill every [TODO] placeholder, then have this page reviewed. It is a plain-language starting point, not legal advice. -->
+<div class="wrap">
+  <nav><a class="brand" href="/">⬡ DocForge</a><div><a href="/#demo">Demo</a><a href="/#pricing">Pricing</a><a href="/docs">Docs</a><a href="/guides/">Guides</a></div></nav>
+  <main>
+<h1>Privacy Policy</h1>
+<p class="muted">Last updated: [TODO: YYYY-MM-DD]</p>
+<p>DocForge is operated by [TODO: legal name], [city], Pakistan, which is the controller of the account data described here. Questions: <a data-support-email href="mailto:"></a>.</p>
+
+<h2>What we store</h2>
+<div class="tablewrap"><table>
+<thead><tr><th>Data</th><th>Why</th><th>Kept for</th></tr></thead>
+<tbody>
+<tr><td>Email address</td><td>Your account, key recovery, usage and billing notices</td><td>Until you delete your account</td></tr>
+<tr><td>API key, as a SHA-256 hash plus a short prefix</td><td>Authenticating requests. We cannot see or recover your key.</td><td>Until rotated or account deletion</td></tr>
+<tr><td>Stored templates, including their <code>sample_data</code></td><td>Rendering by <code>template_id</code></td><td>Until you delete them or your account</td></tr>
+<tr><td>Monthly render counts</td><td>Quotas and billing</td><td>Until account deletion</td></tr>
+<tr><td>Plan and subscription identifiers from Lemon Squeezy</td><td>Applying your paid plan</td><td>Until account deletion</td></tr>
+<tr><td>Signup source (e.g. a referring site or campaign tag)</td><td>Knowing which pages bring sign-ups</td><td>Until account deletion</td></tr>
+<tr><td>Single-use key-recovery tokens</td><td>Lost-key emails</td><td>30 minutes</td></tr>
+</tbody></table></div>
+<p>Do not put personal data in a template's <code>sample_data</code> unless you want it stored.</p>
+
+<h2>What we do not keep</h2>
+<p>The JSON or HTML you send to <code>/v1/render</code> and the PDFs we produce are <b>processed in memory and not retained</b>. The exception is opt-in: with <code>"output": "url"</code> the PDF is written to disk so the download link works, and it is <b>deleted after 24 hours</b>. Anyone with that link can download the file until then, so treat it like a password. The public demo works the same way and stores nothing.</p>
+<p>Event and error logs record the time, account id, route, status or error code and a request id. Account-email events log a masked recipient address (for example <code>a***@example.com</code>) and the subject. Logs never contain request bodies or rendered PDFs. They are rotated by size (5 files of 10&nbsp;MB) and typically kept for [TODO: retention, e.g. about 14 days].</p>
+
+<h2>Backups</h2>
+<p>The account database is snapshotted daily. Snapshots are kept for <b>7 days</b> on the server and for 7 days in encrypted off-site storage, so deleted data disappears from all backups within a week.</p>
+
+<h2>Subprocessors</h2>
+<div class="tablewrap"><table>
+<thead><tr><th>Provider</th><th>Purpose</th><th>Location</th></tr></thead>
+<tbody>
+<tr><td>[TODO: hosting provider]</td><td>Servers, database and rendering</td><td>[TODO: region]</td></tr>
+<tr><td>[TODO: Cloudflare R2 or Backblaze B2]</td><td>Off-site copies of the daily database backup (7 days)</td><td>[TODO: region]</td></tr>
+<tr><td>Lemon Squeezy</td><td>Checkout, payments, invoices and tax (merchant of record). Receives your email and payment details directly.</td><td>See their privacy policy</td></tr>
+<tr><td>Resend (when email delivery is enabled)</td><td>Sending account emails: welcome, key recovery, usage warnings</td><td>See their privacy policy</td></tr>
+</tbody></table></div>
+
+<h2>Cookies and analytics</h2>
+<p>The site sets no tracking cookies. It keeps the referring source in your browser's session storage for the current tab session so that, if you sign up, we know which page brought you. [TODO: list any analytics tool here if you add one.]</p>
+
+<h2>Your rights</h2>
+<p>You can ask for a copy of your data, a correction, or <b>deletion of your account</b> by emailing <a data-support-email href="mailto:"></a> from your account address. We act on requests within 30 days. If you need a data processing agreement for personal data you send through the API, email us and we will discuss it.</p>
+
+<h2>Changes</h2>
+<p>We will email account holders before material changes to this policy take effect.</p>
+  </main>
+  <footer>
+    <div>DocForge · <a data-support-email href="mailto:"></a></div>
+    <div style="margin-top:10px">
+      <a href="/docs">API docs</a><a href="/guides/">Guides</a><a href="/terms">Terms</a><a href="/privacy">Privacy</a><a href="/refunds">Refunds</a><a href="/security">Security</a>
+    </div>
+  </footer>
+</div>
+</body>
+</html>

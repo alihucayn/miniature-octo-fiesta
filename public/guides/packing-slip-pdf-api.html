@@ -1,0 +1,230 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Packing slip PDF API for Shopify and WooCommerce orders</title>
+<meta name="description" content="Generate warehouse packing slips from order JSON: SKUs, quantities, a packed checkbox and a Shopify-style ship-to address. Field mapping and curl included.">
+<link rel="canonical" href="https://YOUR-DOMAIN/guides/packing-slip-pdf-api">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="DocForge">
+<meta property="og:title" content="Packing slip PDF API for Shopify and WooCommerce orders">
+<meta property="og:description" content="Generate warehouse packing slips from order JSON: SKUs, quantities, a packed checkbox and a Shopify-style ship-to address. Field mapping and curl included.">
+<meta property="og:url" content="https://YOUR-DOMAIN/guides/packing-slip-pdf-api">
+<meta property="og:image" content="https://YOUR-DOMAIN/assets/og.png">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath d='M16 2 28 9v14L16 30 4 23V9z' fill='%234f46e5'/%3E%3Cpath d='M11 10h7l4 4v8H11z' fill='%23fff'/%3E%3C/svg%3E">
+<script src="/assets/site.js" defer></script>
+<style>
+  :root { --bg:#fafaf9; --fg:#1c1917; --muted:#57534e; --line:#e7e5e4; --card:#fff; --accent:#4f46e5; --accent-fg:#fff; --code:#1c1917; --code-fg:#e7e5e4; --err:#b91c1c; --warn-bg:#fef3c7; --warn-fg:#78350f; }
+  @media (prefers-color-scheme: dark) { :root { --bg:#0c0a09; --fg:#f5f5f4; --muted:#a8a29e; --line:#292524; --card:#1c1917; --accent:#818cf8; --accent-fg:#0c0a09; --code:#000; --err:#f87171; --warn-bg:#422006; --warn-fg:#fde68a; } }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--fg); font:16px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif; }
+  a { color: var(--accent); }
+  .wrap { max-width: 1080px; margin: 0 auto; padding: 0 16px; }
+  nav { display:flex; justify-content:space-between; align-items:center; padding:18px 0; gap:12px; flex-wrap:wrap; }
+  nav .brand { font-size:18px; font-weight:700; letter-spacing:-.3px; margin:0; }
+  nav a { margin-left:18px; color:var(--fg); text-decoration:none; font-size:14px; }
+  nav div a:first-child { margin-left:0; }
+  main { max-width: 820px; padding: 24px 0 48px; }
+  .crumbs { font-size:14px; color:var(--muted); margin:0 0 12px; }
+  h1 { font-size: clamp(28px, 4.5vw, 42px); line-height:1.1; letter-spacing:-1px; margin:0 0 14px; }
+  h2 { font-size: 24px; letter-spacing:-.4px; margin:40px 0 8px; }
+  h3 { font-size: 18px; margin:24px 0 6px; }
+  .lead { font-size: 19px; color: var(--muted); }
+  .muted { color: var(--muted); }
+  .btn { display:inline-block; background:var(--accent); color:var(--accent-fg); border:0; border-radius:8px; padding:11px 18px; font:600 15px system-ui; cursor:pointer; text-decoration:none; text-align:center; }
+  .btn.ghost { background:transparent; color:var(--fg); border:1px solid var(--line); }
+  .btn.small { padding:6px 12px; font-size:13px; }
+  .btn[disabled] { opacity:.6; cursor:progress; }
+  .row { display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
+  pre { background:var(--code); color:var(--code-fg); padding:16px; border-radius:10px; overflow:auto; font-size:13px; line-height:1.5; margin:0 0 16px; }
+  pre[contenteditable] { outline: 1px dashed transparent; }
+  pre[contenteditable]:focus { outline-color: var(--accent); }
+  code { font: 13.5px ui-monospace, Menlo, monospace; }
+  pre code { font-size: inherit; }
+  .codehead { display:flex; justify-content:space-between; align-items:center; gap:10px; margin:16px 0 6px; font-size:13px; }
+  .tablewrap { overflow-x:auto; margin: 12px 0 16px; }
+  table { border-collapse: collapse; width:100%; font-size:15px; }
+  th, td { text-align:left; padding:9px 10px; border-bottom:1px solid var(--line); vertical-align:top; }
+  th { font-size:13px; color:var(--muted); font-weight:600; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:20px; }
+  .grid { display:grid; gap:16px; grid-template-columns: repeat(auto-fit, minmax(230px,1fr)); }
+  .grid .card h3 { margin:0 0 6px; font-size:17px; }
+  .grid .card p { margin:0; }
+  .note { background:var(--warn-bg); color:var(--warn-fg); border-radius:8px; padding:10px 14px; font-size:15px; }
+  .cta { margin-top:44px; }
+  .cta h2 { margin-top:0; }
+  .yes { color: inherit; }
+  .no { color: var(--muted); }
+  footer { padding: 30px 0 50px; color: var(--muted); font-size: 14px; border-top:1px solid var(--line); }
+  footer a { margin-right:14px; display:inline-block; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <nav><a class="brand" href="/">⬡ DocForge</a><div><a href="/#demo">Demo</a><a href="/#pricing">Pricing</a><a href="/docs">Docs</a><a href="/guides/">Guides</a></div></nav>
+  <main>
+    <p class="crumbs"><a href="/guides/">Guides</a></p>
+<h1>Packing slip PDF API</h1>
+<p class="lead">Print a packing slip for every order: POST the order to <code>gallery:packing-slip</code> and send the PDF to the warehouse printer or the 3PL.</p>
+<p>Warehouse packing slip with SKUs, quantities and a Shopify-style ship-to address. Rows are numbered, each has a ☐ to tick when packed, and the slip ends with a total unit count.</p>
+
+<h2 id="sample-data">Sample data</h2>
+<p>This is the template's built-in sample, loaded live from <code>GET /v1/gallery/packing-slip</code>. Edit it here and press <b>Try it</b> to render it with the public demo (no key; demo PDFs carry a SAMPLE watermark).</p>
+<div class="codehead"><span class="muted">sample.json (editable)</span><button class="btn ghost small" type="button" data-copy="sample">Copy</button></div>
+<pre id="sample" contenteditable="true" spellcheck="false" aria-label="Sample data (editable JSON)">{
+  &quot;order_number&quot;: &quot;#10442&quot;,
+  &quot;order_date&quot;: &quot;2026-10-28&quot;,
+  &quot;locale&quot;: &quot;en-US&quot;,
+  &quot;shipping_method&quot;: &quot;DHL Express&quot;,
+  &quot;ship_to&quot;: {
+    &quot;name&quot;: &quot;Sara Ahmed&quot;,
+    &quot;line1&quot;: &quot;44 Clifton Block 5&quot;,
+    &quot;line2&quot;: &quot;Apartment 3B&quot;,
+    &quot;city&quot;: &quot;Karachi&quot;,
+    &quot;province&quot;: &quot;Sindh&quot;,
+    &quot;zip&quot;: &quot;75600&quot;,
+    &quot;country&quot;: &quot;Pakistan&quot;
+  },
+  &quot;items&quot;: [
+    {
+      &quot;sku&quot;: &quot;TS-BLK-M&quot;,
+      &quot;name&quot;: &quot;Organic T-shirt, black, M&quot;,
+      &quot;qty&quot;: 2
+    },
+    {
+      &quot;sku&quot;: &quot;MUG-01&quot;,
+      &quot;name&quot;: &quot;Ceramic mug&quot;,
+      &quot;qty&quot;: 1
+    }
+  ]
+}</pre>
+<div class="row"><button class="btn" type="button" id="try">Try it: render this PDF</button><span id="tryStatus" class="muted" role="status"></span></div>
+
+<h2 id="fields">Fields</h2>
+<div class="tablewrap"><table>
+<thead><tr><th>Field</th><th>Meaning</th></tr></thead>
+<tbody>
+<tr><td><code>order_number, order_date, locale</code></td><td>Order reference and date.</td></tr>
+<tr><td><code>shipping_method, logo_url</code></td><td>Carrier or service name, and an optional logo.</td></tr>
+<tr><td><code>ship_to {name, line1, line2, city, province, zip, country}</code></td><td><code>line2</code>, <code>province</code> and <code>zip</code> are optional.</td></tr>
+<tr><td><code>items [{sku, name, qty}]</code></td><td>What to pick and pack.</td></tr>
+</tbody></table></div>
+
+<h2 id="shopify">Mapping a Shopify order</h2>
+<p>From an <code>orders/create</code> or <code>orders/paid</code> webhook payload (REST field names):</p>
+<pre>const slip = {
+  order_number: order.name,                       // &quot;#1001&quot;
+  order_date: order.created_at,
+  locale: 'en-US',
+  shipping_method: order.shipping_lines?.[0]?.title ?? '',
+  ship_to: {
+    name: order.shipping_address.name,
+    line1: order.shipping_address.address1,
+    line2: order.shipping_address.address2,
+    city: order.shipping_address.city,
+    province: order.shipping_address.province,
+    zip: order.shipping_address.zip,
+    country: order.shipping_address.country,
+  },
+  items: order.line_items
+    .filter((li) =&gt; li.requires_shipping)
+    .map((li) =&gt; ({ sku: li.sku, name: li.name, qty: li.quantity })),
+};</pre>
+<p>WooCommerce is similar: <code>number</code>, <code>date_created</code>, <code>shipping.{first_name, last_name, address_1, address_2, city, state, postcode, country}</code> and <code>line_items[].{sku, name, quantity}</code>.</p>
+
+<h2 id="curl">Render it with curl</h2>
+<p>With no <code>data</code>, the API renders the sample above and sets <code>X-DocForge-Sample-Data: true</code>, which is a quick way to check your key:</p>
+<div class="codehead"><span class="muted">Sample data</span><button class="btn ghost small" type="button" data-copy="curlSample">Copy</button></div>
+<pre id="curlSample">curl https://YOUR-DOMAIN/v1/render \
+  -H &quot;Authorization: Bearer $DOCFORGE_KEY&quot; \
+  -H &quot;Content-Type: application/json&quot; \
+  -d '{&quot;template_id&quot;: &quot;gallery:packing-slip&quot;}' \
+  -o packing-slip.pdf</pre>
+<p>With your own data, save the JSON above as <code>sample.json</code> and wrap it:</p>
+<div class="codehead"><span class="muted">Your data</span><button class="btn ghost small" type="button" data-copy="curlData">Copy</button></div>
+<pre id="curlData">jq '{template_id: &quot;gallery:packing-slip&quot;, filename: &quot;packing-slip.pdf&quot;, data: .}' sample.json \
+  | curl https://YOUR-DOMAIN/v1/render \
+      -H &quot;Authorization: Bearer $DOCFORGE_KEY&quot; \
+      -H &quot;Content-Type: application/json&quot; \
+      --data-binary @- -o packing-slip.pdf -D headers.txt
+grep -i x-renders-remaining headers.txt</pre>
+<h3>Getting a link instead of a file</h3>
+<p>Add <code>"output": "url"</code> and the response is JSON: <code>{url, filename, size, expires_at, content_type}</code>. The link works for 24 hours without a key, which is what Zapier, Make and n8n need to attach the PDF to an email. <code>"output": "base64"</code> returns the file inline in JSON. See the <a href="/docs#no-code">no-code recipes</a>.</p>
+<h3>Customising the layout</h3>
+<p>Copy the template into your account and edit it there; your app keeps sending only data:</p>
+<pre>curl https://YOUR-DOMAIN/v1/templates \
+  -H &quot;Authorization: Bearer $DOCFORGE_KEY&quot; \
+  -H &quot;Content-Type: application/json&quot; \
+  -d '{&quot;from_gallery&quot;: &quot;packing-slip&quot;, &quot;name&quot;: &quot;My packing slip&quot;}'
+# -&gt; {&quot;id&quot;: &quot;...&quot;, &quot;name&quot;: &quot;...&quot;, &quot;html&quot;: &quot;...&quot;, &quot;css&quot;: &quot;...&quot;, ...}
+# then render with {&quot;template_id&quot;: &quot;&lt;that id&gt;&quot;, &quot;data&quot;: {...}}</pre>
+<p class="muted">Stored templates keep HTML, CSS and sample data. Page options such as <code>footer_html</code> or <code>landscape</code> travel with each render request in <code>options</code>. Helpers are listed in the <a href="/docs#helpers">template language</a> docs.</p>
+<section class="cta card">
+  <h2>Print packing slips from your orders</h2>
+  <p class="muted">Free plan: <span data-plan-renders="free">100</span> PDFs a month with a small watermark, no card. Starter removes the watermark: <span data-plan-price="starter">see pricing</span>/month for <span data-plan-renders="starter">2,500</span> PDFs, about $<span data-plan-per1k="starter">…</span> per 1,000.</p>
+  <div class="row"><a class="btn" href="/?ref=guide-packing-slip#signup">Get a free API key</a><a class="btn ghost" href="/docs">Read the API docs</a></div>
+</section>
+  </main>
+  <footer>
+    <div>DocForge · <a data-support-email href="mailto:"></a></div>
+    <div style="margin-top:10px">
+      <a href="/docs">API docs</a><a href="/guides/">Guides</a><a href="/terms">Terms</a><a href="/privacy">Privacy</a><a href="/refunds">Refunds</a><a href="/security">Security</a>
+    </div>
+  </footer>
+</div>
+<script>
+(() => {
+  const slug = "packing-slip";
+  const sample = document.getElementById('sample');
+  const btn = document.getElementById('try');
+  const status = document.getElementById('tryStatus');
+  let edited = false;
+  sample.addEventListener('input', () => { edited = true; });
+  fetch('/v1/gallery/' + slug)
+    .then((r) => (r.ok ? r.json() : null))
+    .then((t) => { if (t && t.sample_data && !edited) sample.textContent = JSON.stringify(t.sample_data, null, 2); })
+    .catch(() => {});
+  btn.onclick = async () => {
+    let data;
+    try { data = JSON.parse(sample.textContent); } catch { status.textContent = 'The sample JSON is not valid; fix it and try again.'; return; }
+    const win = window.open('', '_blank');
+    btn.disabled = true;
+    status.textContent = 'Rendering…';
+    try {
+      const res = await fetch('/v1/demo/render', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ template_id: 'gallery:' + slug, data }),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        if (win) win.close();
+        status.textContent = body.message || 'Render failed, try again in a few seconds.';
+        return;
+      }
+      const url = URL.createObjectURL(await res.blob());
+      setTimeout(() => URL.revokeObjectURL(url), 120000);
+      if (win) {
+        win.location.href = url;
+        status.textContent = 'Opened in a new tab. Demo PDFs carry a SAMPLE watermark.';
+      } else {
+        const a = document.createElement('a');
+        a.href = url;
+        a.target = '_blank';
+        a.rel = 'noopener';
+        a.textContent = 'Open the PDF';
+        status.replaceChildren(a, document.createTextNode(' (your browser blocked the new tab)'));
+      }
+    } catch {
+      if (win) win.close();
+      status.textContent = 'Network error, try again.';
+    } finally {
+      btn.disabled = false;
+    }
+  };
+})();
+</script>
+</body>
+</html>

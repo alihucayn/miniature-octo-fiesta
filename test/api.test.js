@@ -1,6 +1,9 @@
 const { test, before, after } = require('node:test');
 const assert = require('node:assert/strict');
 const crypto = require('node:crypto');
+const fs = require('node:fs');
+const os = require('node:os');
+const path = require('node:path');
 const { createApp } = require('../src/server');
 const { openDb, Store } = require('../src/db');
 const { Renderer, buildHtml, isPrivateIp } = require('../src/render');
@@ -9,11 +12,15 @@ process.env.LS_VARIANT_PRO = '222';
 const SECRET = 'whsec_test';
 
 let server, base, store, renderer;
+const filesDir = fs.mkdtempSync(path.join(os.tmpdir(), 'docforge-files-'));
 
 before(async () => {
   store = new Store(openDb(':memory:'));
   renderer = new Renderer({ maxConcurrent: 2 });
-  const app = createApp({ store, renderer, config: { webhookSecret: SECRET, signupsPerHour: 1000, checkoutUrls: { pro: 'https://shop.example/checkout/buy/abc' } } });
+  const app = createApp({ store, renderer, config: {
+    webhookSecret: SECRET, signupsPerHour: 1000, checkoutUrls: { pro: 'https://shop.example/checkout/buy/abc' },
+    supportEmail: 'help@docforge.test', filesDir, mailer: async () => {},
+  } });
   await new Promise((resolve) => { server = app.listen(0, resolve); });
   base = `http://127.0.0.1:${server.address().port}`;
 });
@@ -21,6 +28,7 @@ before(async () => {
 after(async () => {
   server.close();
   await renderer.close();
+  fs.rmSync(filesDir, { recursive: true, force: true });
 });
 
 const json = (method, path, body, key) =>
@@ -151,4 +159,70 @@ test('public demo renders gallery templates only', async () => {
   assert.equal(ok.status, 200);
   const bad = await json('POST', '/v1/demo/render', { template_id: 'tpl_x', html: '<p>' });
   assert.equal(bad.status, 400);
+});
+
+test('data may be a JSON-encoded string', async () => {
+  const key = await signup('stringdata@test.dev');
+  const res = await json('POST', '/v1/render', { html: '<h1>Hi {{name}}</h1>', data: JSON.stringify({ name: 'Ali' }) }, key);
+  assert.equal(res.status, 200);
+  assert.equal(Buffer.from(await res.arrayBuffer()).subarray(0, 5).toString(), '%PDF-');
+  assert.equal(res.headers.get('x-renders-limit'), '100');
+  assert.equal(res.headers.get('x-renders-remaining'), '99');
+  const bad = await json('POST', '/v1/render', { html: '<p>x</p>', data: '{nope' }, key);
+  assert.equal(bad.status, 400);
+  assert.equal((await bad.json()).error, 'invalid_data');
+});
+
+test('gallery render without data flags sample data', async () => {
+  const key = await signup('sample@test.dev');
+  const res = await json('POST', '/v1/render', { template_id: 'gallery:receipt', output: 'base64' }, key);
+  assert.equal(res.status, 200);
+  assert.equal(res.headers.get('x-docforge-sample-data'), 'true');
+});
+
+test("output:'url' returns a fetchable hosted PDF", async () => {
+  const key = await signup('hosted@test.dev');
+  const res = await json('POST', '/v1/render', { html: '<p>hosted</p>', output: 'url', filename: 'inv 42' }, key);
+  assert.equal(res.status, 200);
+  const body = await res.json();
+  assert.equal(body.filename, 'inv_42.pdf');
+  assert.equal(body.content_type, 'application/pdf');
+  assert.ok(Date.parse(body.expires_at) > Date.now());
+  const m = body.url.match(/\/f\/([\w-]{32})\/inv_42\.pdf$/);
+  assert.ok(m, body.url);
+  const file = await fetch(`${base}/f/${m[1]}/inv_42.pdf`);
+  assert.equal(file.status, 200);
+  assert.match(file.headers.get('content-disposition'), /attachment/);
+  assert.equal(Buffer.from(await file.arrayBuffer()).subarray(0, 5).toString(), '%PDF-');
+  assert.equal((await fetch(`${base}/f/${'x'.repeat(32)}/a.pdf`)).status, 404);
+  assert.equal((await fetch(`${base}/f/short/a.pdf`)).status, 404);
+});
+
+test('request shape validation: base_url, raw, format', async () => {
+  const key = await signup('shape@test.dev');
+  const http = await json('POST', '/v1/render', { html: '<p>x</p>', base_url: 'http://x' }, key);
+  assert.equal(http.status, 400);
+  assert.equal((await http.json()).error, 'invalid_base_url');
+  const fmt = await json('POST', '/v1/render', { html: '<p>x</p>', options: { format: 'A9' } }, key);
+  assert.equal(fmt.status, 400);
+  assert.equal((await fmt.json()).error, 'invalid_option');
+  const ok = await json('POST', '/v1/render', { html: '<p>x</p>', options: { format: 'Letter' }, output: 'base64' }, key);
+  assert.equal(ok.status, 200);
+  const me = await (await json('GET', '/v1/me', undefined, key)).json();
+  assert.equal(me.renders_used, 1);
+});
+
+test('sitemap, robots, healthz and plans', async () => {
+  const sm = await fetch(`${base}/sitemap.xml`);
+  assert.equal(sm.status, 200);
+  assert.match(await sm.text(), /\/docs</);
+  assert.match(await (await fetch(`${base}/robots.txt`)).text(), /Disallow: \/v1\//);
+  const hz = await fetch(`${base}/healthz`);
+  assert.equal(hz.status, 200);
+  assert.equal((await hz.json()).ok, true);
+  const plans = await (await fetch(`${base}/v1/plans`)).json();
+  assert.equal(plans.support_email, 'help@docforge.test');
+  assert.equal(plans.plans.starter.priceUsd, 15);
+  assert.equal(plans.plans.starter.graceRenders, 250);
+  assert.equal(typeof plans.public_url, 'string');
 });

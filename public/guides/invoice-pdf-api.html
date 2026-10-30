@@ -1,0 +1,295 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Invoice PDF API: generate invoice PDFs from JSON</title>
+<meta name="description" content="Generate invoice PDFs from JSON with one HTTP call: line items, discounts, tax lines, page numbers. Copy-paste examples for curl, Node, Python and PHP.">
+<link rel="canonical" href="https://YOUR-DOMAIN/guides/invoice-pdf-api">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="DocForge">
+<meta property="og:title" content="Invoice PDF API: generate invoice PDFs from JSON">
+<meta property="og:description" content="Generate invoice PDFs from JSON with one HTTP call: line items, discounts, tax lines, page numbers. Copy-paste examples for curl, Node, Python and PHP.">
+<meta property="og:url" content="https://YOUR-DOMAIN/guides/invoice-pdf-api">
+<meta property="og:image" content="https://YOUR-DOMAIN/assets/og.png">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath d='M16 2 28 9v14L16 30 4 23V9z' fill='%234f46e5'/%3E%3Cpath d='M11 10h7l4 4v8H11z' fill='%23fff'/%3E%3C/svg%3E">
+<script src="/assets/site.js" defer></script>
+<style>
+  :root { --bg:#fafaf9; --fg:#1c1917; --muted:#57534e; --line:#e7e5e4; --card:#fff; --accent:#4f46e5; --accent-fg:#fff; --code:#1c1917; --code-fg:#e7e5e4; --err:#b91c1c; --warn-bg:#fef3c7; --warn-fg:#78350f; }
+  @media (prefers-color-scheme: dark) { :root { --bg:#0c0a09; --fg:#f5f5f4; --muted:#a8a29e; --line:#292524; --card:#1c1917; --accent:#818cf8; --accent-fg:#0c0a09; --code:#000; --err:#f87171; --warn-bg:#422006; --warn-fg:#fde68a; } }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--fg); font:16px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif; }
+  a { color: var(--accent); }
+  .wrap { max-width: 1080px; margin: 0 auto; padding: 0 16px; }
+  nav { display:flex; justify-content:space-between; align-items:center; padding:18px 0; gap:12px; flex-wrap:wrap; }
+  nav .brand { font-size:18px; font-weight:700; letter-spacing:-.3px; margin:0; }
+  nav a { margin-left:18px; color:var(--fg); text-decoration:none; font-size:14px; }
+  nav div a:first-child { margin-left:0; }
+  main { max-width: 820px; padding: 24px 0 48px; }
+  .crumbs { font-size:14px; color:var(--muted); margin:0 0 12px; }
+  h1 { font-size: clamp(28px, 4.5vw, 42px); line-height:1.1; letter-spacing:-1px; margin:0 0 14px; }
+  h2 { font-size: 24px; letter-spacing:-.4px; margin:40px 0 8px; }
+  h3 { font-size: 18px; margin:24px 0 6px; }
+  .lead { font-size: 19px; color: var(--muted); }
+  .muted { color: var(--muted); }
+  .btn { display:inline-block; background:var(--accent); color:var(--accent-fg); border:0; border-radius:8px; padding:11px 18px; font:600 15px system-ui; cursor:pointer; text-decoration:none; text-align:center; }
+  .btn.ghost { background:transparent; color:var(--fg); border:1px solid var(--line); }
+  .btn.small { padding:6px 12px; font-size:13px; }
+  .btn[disabled] { opacity:.6; cursor:progress; }
+  .row { display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
+  pre { background:var(--code); color:var(--code-fg); padding:16px; border-radius:10px; overflow:auto; font-size:13px; line-height:1.5; margin:0 0 16px; }
+  pre[contenteditable] { outline: 1px dashed transparent; }
+  pre[contenteditable]:focus { outline-color: var(--accent); }
+  code { font: 13.5px ui-monospace, Menlo, monospace; }
+  pre code { font-size: inherit; }
+  .codehead { display:flex; justify-content:space-between; align-items:center; gap:10px; margin:16px 0 6px; font-size:13px; }
+  .tablewrap { overflow-x:auto; margin: 12px 0 16px; }
+  table { border-collapse: collapse; width:100%; font-size:15px; }
+  th, td { text-align:left; padding:9px 10px; border-bottom:1px solid var(--line); vertical-align:top; }
+  th { font-size:13px; color:var(--muted); font-weight:600; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:20px; }
+  .grid { display:grid; gap:16px; grid-template-columns: repeat(auto-fit, minmax(230px,1fr)); }
+  .grid .card h3 { margin:0 0 6px; font-size:17px; }
+  .grid .card p { margin:0; }
+  .note { background:var(--warn-bg); color:var(--warn-fg); border-radius:8px; padding:10px 14px; font-size:15px; }
+  .cta { margin-top:44px; }
+  .cta h2 { margin-top:0; }
+  .yes { color: inherit; }
+  .no { color: var(--muted); }
+  footer { padding: 30px 0 50px; color: var(--muted); font-size: 14px; border-top:1px solid var(--line); }
+  footer a { margin-right:14px; display:inline-block; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <nav><a class="brand" href="/">⬡ DocForge</a><div><a href="/#demo">Demo</a><a href="/#pricing">Pricing</a><a href="/docs">Docs</a><a href="/guides/">Guides</a></div></nav>
+  <main>
+    <p class="crumbs"><a href="/guides/">Guides</a></p>
+<h1>Invoice PDF API: JSON in, invoice PDF out</h1>
+<p class="lead">Send your invoice as JSON to <code>POST /v1/render</code> with <code>"template_id": "gallery:invoice"</code> and get back a print-ready A4 PDF. No HTML to write, no headless browser to run.</p>
+<p>Invoice with line items, discount, shipping, one tax rate or several tax lines, and page numbers. Pass &quot;total&quot; to print your billing system's figure. The template formats money with your currency and locale, prints "Page X of Y" on every page, and keeps line rows and the totals block from splitting across pages.</p>
+
+<h2 id="sample-data">Sample data</h2>
+<p>This is the template's built-in sample, loaded live from <code>GET /v1/gallery/invoice</code>. Edit it here and press <b>Try it</b> to render it with the public demo (no key; demo PDFs carry a SAMPLE watermark).</p>
+<div class="codehead"><span class="muted">sample.json (editable)</span><button class="btn ghost small" type="button" data-copy="sample">Copy</button></div>
+<pre id="sample" contenteditable="true" spellcheck="false" aria-label="Sample data (editable JSON)">{
+  &quot;number&quot;: &quot;INV-2026-0042&quot;,
+  &quot;issue_date&quot;: &quot;2026-10-01&quot;,
+  &quot;due_date&quot;: &quot;2026-10-31&quot;,
+  &quot;currency&quot;: &quot;USD&quot;,
+  &quot;locale&quot;: &quot;en-US&quot;,
+  &quot;accent_color&quot;: &quot;#4f46e5&quot;,
+  &quot;company&quot;: {
+    &quot;name&quot;: &quot;Acme Studio&quot;,
+    &quot;address&quot;: &quot;12 Market St, Lahore&quot;,
+    &quot;email&quot;: &quot;billing@acme.studio&quot;
+  },
+  &quot;client&quot;: {
+    &quot;name&quot;: &quot;Globex Corp&quot;,
+    &quot;address&quot;: &quot;500 Fifth Ave, New York, NY&quot;,
+    &quot;email&quot;: &quot;ap@globex.com&quot;
+  },
+  &quot;items&quot;: [
+    {
+      &quot;description&quot;: &quot;Website redesign&quot;,
+      &quot;qty&quot;: 1,
+      &quot;price&quot;: 2400
+    },
+    {
+      &quot;description&quot;: &quot;Hosting (12 months)&quot;,
+      &quot;qty&quot;: 12,
+      &quot;price&quot;: 15
+    },
+    {
+      &quot;description&quot;: &quot;Support hours&quot;,
+      &quot;qty&quot;: 6,
+      &quot;price&quot;: 60
+    }
+  ],
+  &quot;discount&quot;: 100,
+  &quot;tax_rate&quot;: 8,
+  &quot;notes&quot;: &quot;Thank you for your business!&quot;,
+  &quot;payment_instructions&quot;: &quot;Wire to IBAN PK00 ACME 0000 1234 5678 or pay online at acme.studio/pay&quot;
+}</pre>
+<div class="row"><button class="btn" type="button" id="try">Try it: render this PDF</button><span id="tryStatus" class="muted" role="status"></span></div>
+
+<h2 id="fields">Fields</h2>
+<div class="tablewrap"><table>
+<thead><tr><th>Field</th><th>Meaning</th></tr></thead>
+<tbody>
+<tr><td><code>number, issue_date, due_date</code></td><td>Invoice number and dates. Dates accept ISO strings, epoch milliseconds or epoch seconds.</td></tr>
+<tr><td><code>currency, locale</code></td><td>ISO currency (any case) and a BCP 47 locale such as <code>en-US</code>, <code>de-DE</code> or <code>ur-PK</code>.</td></tr>
+<tr><td><code>company {name, address, email, logo_url}</code></td><td>Your business. <code>logo_url</code> must be https (or a data: URI).</td></tr>
+<tr><td><code>client {name, address, email}</code></td><td>Who you are billing.</td></tr>
+<tr><td><code>items [{description, qty, price}]</code></td><td>Line items. <code>price</code> is in major units (12.50, not 1250).</td></tr>
+<tr><td><code>discount, shipping</code></td><td>Optional amounts. Discount is subtracted before tax.</td></tr>
+<tr><td><code>tax_rate or tax_lines [{name, rate, amount}]</code></td><td>One percentage, or several precomputed lines (e.g. GST + PST).</td></tr>
+<tr><td><code>total</code></td><td>Optional. Pass your billing system's figure and it is printed as-is instead of being recomputed.</td></tr>
+<tr><td><code>notes, payment_instructions, accent_color</code></td><td>Free text and the brand colour.</td></tr>
+</tbody></table></div>
+
+<h2 id="curl">Render it with curl</h2>
+<p>With no <code>data</code>, the API renders the sample above and sets <code>X-DocForge-Sample-Data: true</code>, which is a quick way to check your key:</p>
+<div class="codehead"><span class="muted">Sample data</span><button class="btn ghost small" type="button" data-copy="curlSample">Copy</button></div>
+<pre id="curlSample">curl https://YOUR-DOMAIN/v1/render \
+  -H &quot;Authorization: Bearer $DOCFORGE_KEY&quot; \
+  -H &quot;Content-Type: application/json&quot; \
+  -d '{&quot;template_id&quot;: &quot;gallery:invoice&quot;}' \
+  -o invoice.pdf</pre>
+<p>With your own data, save the JSON above as <code>sample.json</code> and wrap it:</p>
+<div class="codehead"><span class="muted">Your data</span><button class="btn ghost small" type="button" data-copy="curlData">Copy</button></div>
+<pre id="curlData">jq '{template_id: &quot;gallery:invoice&quot;, filename: &quot;invoice.pdf&quot;, data: .}' sample.json \
+  | curl https://YOUR-DOMAIN/v1/render \
+      -H &quot;Authorization: Bearer $DOCFORGE_KEY&quot; \
+      -H &quot;Content-Type: application/json&quot; \
+      --data-binary @- -o invoice.pdf -D headers.txt
+grep -i x-renders-remaining headers.txt</pre>
+
+<h2 id="node">Node.js</h2>
+<div class="codehead"><span class="muted">invoice.mjs</span><button class="btn ghost small" type="button" data-copy="node">Copy</button></div>
+<pre id="node">// Node 18+ (built-in fetch). npm i nothing.
+import { writeFile } from 'node:fs/promises';
+
+export async function renderInvoice(invoice) {
+  const res = await fetch('https://YOUR-DOMAIN/v1/render', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${process.env.DOCFORGE_KEY}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ template_id: 'gallery:invoice', filename: `${invoice.number}.pdf`, data: invoice }),
+    signal: AbortSignal.timeout(40_000),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() =&gt; ({}));
+    // 402 quota_exceeded -&gt; err.upgrade_url, 422 template_error -&gt; err.message,
+    // 429 concurrency_limit / 503 busy -&gt; retry after the Retry-After header.
+    throw new Error(`DocForge ${res.status} ${err.error}: ${err.message ?? ''}`);
+  }
+  console.log('renders left this month:', res.headers.get('x-renders-remaining'));
+  const pdf = Buffer.from(await res.arrayBuffer());
+  await writeFile(`${invoice.number}.pdf`, pdf);
+  return pdf;
+}</pre>
+
+<h2 id="python">Python</h2>
+<div class="codehead"><span class="muted">invoice.py</span><button class="btn ghost small" type="button" data-copy="python">Copy</button></div>
+<pre id="python">import os
+import requests
+
+def render_invoice(invoice: dict) -&gt; bytes:
+    r = requests.post(
+        &quot;https://YOUR-DOMAIN/v1/render&quot;,
+        headers={&quot;Authorization&quot;: f&quot;Bearer {os.environ['DOCFORGE_KEY']}&quot;},
+        json={&quot;template_id&quot;: &quot;gallery:invoice&quot;, &quot;filename&quot;: f&quot;{invoice['number']}.pdf&quot;, &quot;data&quot;: invoice},
+        timeout=40,
+    )
+    if not r.ok:
+        err = r.json()
+        # err[&quot;error&quot;] is a stable code: quota_exceeded, template_error, busy, ...
+        raise RuntimeError(f&quot;DocForge {r.status_code} {err.get('error')}: {err.get('message', '')}&quot;)
+    with open(f&quot;{invoice['number']}.pdf&quot;, &quot;wb&quot;) as f:
+        f.write(r.content)
+    return r.content</pre>
+
+<h2 id="php">PHP</h2>
+<div class="codehead"><span class="muted">invoice.php</span><button class="btn ghost small" type="button" data-copy="php">Copy</button></div>
+<pre id="php">&lt;?php
+// composer require guzzlehttp/guzzle
+$client = new GuzzleHttp\Client(['base_uri' =&gt; 'https://YOUR-DOMAIN', 'timeout' =&gt; 40]);
+
+$res = $client-&gt;post('/v1/render', [
+    'headers' =&gt; ['Authorization' =&gt; 'Bearer ' . getenv('DOCFORGE_KEY')],
+    'json' =&gt; [
+        'template_id' =&gt; 'gallery:invoice',
+        'filename' =&gt; $invoice['number'] . '.pdf',
+        'data' =&gt; $invoice,
+    ],
+    'http_errors' =&gt; false,
+]);
+
+if ($res-&gt;getStatusCode() !== 200) {
+    $err = json_decode((string) $res-&gt;getBody(), true);
+    throw new RuntimeException(&quot;DocForge {$res-&gt;getStatusCode()} {$err['error']}: &quot; . ($err['message'] ?? ''));
+}
+file_put_contents($invoice['number'] . '.pdf', (string) $res-&gt;getBody());</pre>
+<p class="muted">Laravel? See <a href="/guides/laravel-html-to-pdf">Laravel HTML to PDF</a>, which also covers sending your existing Blade view.</p>
+
+<h2 id="more">Page numbers, tax and totals</h2>
+<p>The invoice ships with a default <code>options.footer_html</code> that prints "Page X of Y". Replace it by sending your own <code>options.footer_html</code> (Chromium fills <code>&lt;span class="pageNumber"&gt;</code> and <code>&lt;span class="totalPages"&gt;</code>). For other paper sizes pass <code>"options": {"format": "letter"}</code>; accepted formats are a4, letter, legal, a5, a3, tabloid and ledger.</p>
+<h3>Getting a link instead of a file</h3>
+<p>Add <code>"output": "url"</code> and the response is JSON: <code>{url, filename, size, expires_at, content_type}</code>. The link works for 24 hours without a key, which is what Zapier, Make and n8n need to attach the PDF to an email. <code>"output": "base64"</code> returns the file inline in JSON. See the <a href="/docs#no-code">no-code recipes</a>.</p>
+<h3>Customising the layout</h3>
+<p>Copy the template into your account and edit it there; your app keeps sending only data:</p>
+<pre>curl https://YOUR-DOMAIN/v1/templates \
+  -H &quot;Authorization: Bearer $DOCFORGE_KEY&quot; \
+  -H &quot;Content-Type: application/json&quot; \
+  -d '{&quot;from_gallery&quot;: &quot;invoice&quot;, &quot;name&quot;: &quot;My invoice&quot;}'
+# -&gt; {&quot;id&quot;: &quot;...&quot;, &quot;name&quot;: &quot;...&quot;, &quot;html&quot;: &quot;...&quot;, &quot;css&quot;: &quot;...&quot;, ...}
+# then render with {&quot;template_id&quot;: &quot;&lt;that id&gt;&quot;, &quot;data&quot;: {...}}</pre>
+<p class="muted">Stored templates keep HTML, CSS and sample data. Page options such as <code>footer_html</code> or <code>landscape</code> travel with each render request in <code>options</code>. Helpers are listed in the <a href="/docs#helpers">template language</a> docs.</p>
+<section class="cta card">
+  <h2>Send your first invoice PDF</h2>
+  <p class="muted">Free plan: <span data-plan-renders="free">100</span> PDFs a month with a small watermark, no card. Starter removes the watermark: <span data-plan-price="starter">see pricing</span>/month for <span data-plan-renders="starter">2,500</span> PDFs, about $<span data-plan-per1k="starter">…</span> per 1,000.</p>
+  <div class="row"><a class="btn" href="/?ref=guide-invoice#signup">Get a free API key</a><a class="btn ghost" href="/docs">Read the API docs</a></div>
+</section>
+  </main>
+  <footer>
+    <div>DocForge · <a data-support-email href="mailto:"></a></div>
+    <div style="margin-top:10px">
+      <a href="/docs">API docs</a><a href="/guides/">Guides</a><a href="/terms">Terms</a><a href="/privacy">Privacy</a><a href="/refunds">Refunds</a><a href="/security">Security</a>
+    </div>
+  </footer>
+</div>
+<script>
+(() => {
+  const slug = "invoice";
+  const sample = document.getElementById('sample');
+  const btn = document.getElementById('try');
+  const status = document.getElementById('tryStatus');
+  let edited = false;
+  sample.addEventListener('input', () => { edited = true; });
+  fetch('/v1/gallery/' + slug)
+    .then((r) => (r.ok ? r.json() : null))
+    .then((t) => { if (t && t.sample_data && !edited) sample.textContent = JSON.stringify(t.sample_data, null, 2); })
+    .catch(() => {});
+  btn.onclick = async () => {
+    let data;
+    try { data = JSON.parse(sample.textContent); } catch { status.textContent = 'The sample JSON is not valid; fix it and try again.'; return; }
+    const win = window.open('', '_blank');
+    btn.disabled = true;
+    status.textContent = 'Rendering…';
+    try {
+      const res = await fetch('/v1/demo/render', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ template_id: 'gallery:' + slug, data }),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        if (win) win.close();
+        status.textContent = body.message || 'Render failed, try again in a few seconds.';
+        return;
+      }
+      const url = URL.createObjectURL(await res.blob());
+      setTimeout(() => URL.revokeObjectURL(url), 120000);
+      if (win) {
+        win.location.href = url;
+        status.textContent = 'Opened in a new tab. Demo PDFs carry a SAMPLE watermark.';
+      } else {
+        const a = document.createElement('a');
+        a.href = url;
+        a.target = '_blank';
+        a.rel = 'noopener';
+        a.textContent = 'Open the PDF';
+        status.replaceChildren(a, document.createTextNode(' (your browser blocked the new tab)'));
+      }
+    } catch {
+      if (win) win.close();
+      status.textContent = 'Network error, try again.';
+    } finally {
+      btn.disabled = false;
+    }
+  };
+})();
+</script>
+</body>
+</html>

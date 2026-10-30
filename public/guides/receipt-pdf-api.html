@@ -1,0 +1,209 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Receipt PDF API: payment receipts from Stripe-style JSON</title>
+<meta name="description" content="Turn a payment into a branded PDF receipt with one API call. Accepts Stripe-style amounts in cents, any currency and locale. Free tier, copy-paste curl.">
+<link rel="canonical" href="https://YOUR-DOMAIN/guides/receipt-pdf-api">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="DocForge">
+<meta property="og:title" content="Receipt PDF API: payment receipts from Stripe-style JSON">
+<meta property="og:description" content="Turn a payment into a branded PDF receipt with one API call. Accepts Stripe-style amounts in cents, any currency and locale. Free tier, copy-paste curl.">
+<meta property="og:url" content="https://YOUR-DOMAIN/guides/receipt-pdf-api">
+<meta property="og:image" content="https://YOUR-DOMAIN/assets/og.png">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath d='M16 2 28 9v14L16 30 4 23V9z' fill='%234f46e5'/%3E%3Cpath d='M11 10h7l4 4v8H11z' fill='%23fff'/%3E%3C/svg%3E">
+<script src="/assets/site.js" defer></script>
+<style>
+  :root { --bg:#fafaf9; --fg:#1c1917; --muted:#57534e; --line:#e7e5e4; --card:#fff; --accent:#4f46e5; --accent-fg:#fff; --code:#1c1917; --code-fg:#e7e5e4; --err:#b91c1c; --warn-bg:#fef3c7; --warn-fg:#78350f; }
+  @media (prefers-color-scheme: dark) { :root { --bg:#0c0a09; --fg:#f5f5f4; --muted:#a8a29e; --line:#292524; --card:#1c1917; --accent:#818cf8; --accent-fg:#0c0a09; --code:#000; --err:#f87171; --warn-bg:#422006; --warn-fg:#fde68a; } }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--fg); font:16px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif; }
+  a { color: var(--accent); }
+  .wrap { max-width: 1080px; margin: 0 auto; padding: 0 16px; }
+  nav { display:flex; justify-content:space-between; align-items:center; padding:18px 0; gap:12px; flex-wrap:wrap; }
+  nav .brand { font-size:18px; font-weight:700; letter-spacing:-.3px; margin:0; }
+  nav a { margin-left:18px; color:var(--fg); text-decoration:none; font-size:14px; }
+  nav div a:first-child { margin-left:0; }
+  main { max-width: 820px; padding: 24px 0 48px; }
+  .crumbs { font-size:14px; color:var(--muted); margin:0 0 12px; }
+  h1 { font-size: clamp(28px, 4.5vw, 42px); line-height:1.1; letter-spacing:-1px; margin:0 0 14px; }
+  h2 { font-size: 24px; letter-spacing:-.4px; margin:40px 0 8px; }
+  h3 { font-size: 18px; margin:24px 0 6px; }
+  .lead { font-size: 19px; color: var(--muted); }
+  .muted { color: var(--muted); }
+  .btn { display:inline-block; background:var(--accent); color:var(--accent-fg); border:0; border-radius:8px; padding:11px 18px; font:600 15px system-ui; cursor:pointer; text-decoration:none; text-align:center; }
+  .btn.ghost { background:transparent; color:var(--fg); border:1px solid var(--line); }
+  .btn.small { padding:6px 12px; font-size:13px; }
+  .btn[disabled] { opacity:.6; cursor:progress; }
+  .row { display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
+  pre { background:var(--code); color:var(--code-fg); padding:16px; border-radius:10px; overflow:auto; font-size:13px; line-height:1.5; margin:0 0 16px; }
+  pre[contenteditable] { outline: 1px dashed transparent; }
+  pre[contenteditable]:focus { outline-color: var(--accent); }
+  code { font: 13.5px ui-monospace, Menlo, monospace; }
+  pre code { font-size: inherit; }
+  .codehead { display:flex; justify-content:space-between; align-items:center; gap:10px; margin:16px 0 6px; font-size:13px; }
+  .tablewrap { overflow-x:auto; margin: 12px 0 16px; }
+  table { border-collapse: collapse; width:100%; font-size:15px; }
+  th, td { text-align:left; padding:9px 10px; border-bottom:1px solid var(--line); vertical-align:top; }
+  th { font-size:13px; color:var(--muted); font-weight:600; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:20px; }
+  .grid { display:grid; gap:16px; grid-template-columns: repeat(auto-fit, minmax(230px,1fr)); }
+  .grid .card h3 { margin:0 0 6px; font-size:17px; }
+  .grid .card p { margin:0; }
+  .note { background:var(--warn-bg); color:var(--warn-fg); border-radius:8px; padding:10px 14px; font-size:15px; }
+  .cta { margin-top:44px; }
+  .cta h2 { margin-top:0; }
+  .yes { color: inherit; }
+  .no { color: var(--muted); }
+  footer { padding: 30px 0 50px; color: var(--muted); font-size: 14px; border-top:1px solid var(--line); }
+  footer a { margin-right:14px; display:inline-block; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <nav><a class="brand" href="/">⬡ DocForge</a><div><a href="/#demo">Demo</a><a href="/#pricing">Pricing</a><a href="/docs">Docs</a><a href="/guides/">Guides</a></div></nav>
+  <main>
+    <p class="crumbs"><a href="/guides/">Guides</a></p>
+<h1>Receipt PDF API for payments and subscriptions</h1>
+<p class="lead">POST a payment as JSON with <code>"template_id": "gallery:receipt"</code> and email the customer a clean, branded PDF receipt.</p>
+<p>Compact payment receipt. Accepts Stripe-style data: amount_paid and line amounts in minor units (cents). The field names follow Stripe's invoice object, so most of the mapping is a straight copy. If you are on Stripe, the <a href="/guides/stripe-invoice-pdf">Stripe invoice.paid guide</a> has the full webhook handler.</p>
+
+<h2 id="sample-data">Sample data</h2>
+<p>This is the template's built-in sample, loaded live from <code>GET /v1/gallery/receipt</code>. Edit it here and press <b>Try it</b> to render it with the public demo (no key; demo PDFs carry a SAMPLE watermark).</p>
+<div class="codehead"><span class="muted">sample.json (editable)</span><button class="btn ghost small" type="button" data-copy="sample">Copy</button></div>
+<pre id="sample" contenteditable="true" spellcheck="false" aria-label="Sample data (editable JSON)">{
+  &quot;merchant&quot;: &quot;Bookly&quot;,
+  &quot;number&quot;: &quot;R-88213&quot;,
+  &quot;paid_at&quot;: 1793268720,
+  &quot;customer_email&quot;: &quot;jane@example.com&quot;,
+  &quot;currency&quot;: &quot;usd&quot;,
+  &quot;locale&quot;: &quot;en-US&quot;,
+  &quot;amount_paid&quot;: 2400,
+  &quot;lines&quot;: [
+    {
+      &quot;description&quot;: &quot;Pro plan (monthly)&quot;,
+      &quot;amount&quot;: 1200,
+      &quot;quantity&quot;: 1
+    },
+    {
+      &quot;description&quot;: &quot;Extra seats&quot;,
+      &quot;amount&quot;: 1200,
+      &quot;quantity&quot;: 3
+    }
+  ],
+  &quot;payment_method&quot;: &quot;Visa •••• 4242&quot;,
+  &quot;support_email&quot;: &quot;help@bookly.app&quot;
+}</pre>
+<div class="row"><button class="btn" type="button" id="try">Try it: render this PDF</button><span id="tryStatus" class="muted" role="status"></span></div>
+
+<h2 id="fields">Fields</h2>
+<div class="tablewrap"><table>
+<thead><tr><th>Field</th><th>Meaning</th></tr></thead>
+<tbody>
+<tr><td><code>merchant, logo_url</code></td><td>Your business name and an optional https or data: logo.</td></tr>
+<tr><td><code>number</code></td><td>Receipt or invoice number.</td></tr>
+<tr><td><code>paid_at</code></td><td>When it was paid. Epoch seconds (Stripe), epoch milliseconds or an ISO string.</td></tr>
+<tr><td><code>customer_email</code></td><td>Printed as "Billed to".</td></tr>
+<tr><td><code>currency, locale</code></td><td>Lower-case Stripe currencies are fine; the money helper upper-cases them.</td></tr>
+<tr><td><code>amount_paid</code></td><td>Total in minor units (cents): 2400 prints as $24.00.</td></tr>
+<tr><td><code>lines [{description, amount, quantity}]</code></td><td>Line totals in minor units; quantity above 1 prints "× n".</td></tr>
+<tr><td><code>payment_method, support_email</code></td><td>Free text such as "Visa •••• 4242", and where customers can reply.</td></tr>
+</tbody></table></div>
+<p class="note">Zero-decimal currencies (JPY, KRW and others) have no cents, but the template divides every amount by 100. Multiply those amounts by 100 before sending, or copy the template and remove the <code>div … 100</code>.</p>
+
+<h2 id="curl">Render it with curl</h2>
+<p>With no <code>data</code>, the API renders the sample above and sets <code>X-DocForge-Sample-Data: true</code>, which is a quick way to check your key:</p>
+<div class="codehead"><span class="muted">Sample data</span><button class="btn ghost small" type="button" data-copy="curlSample">Copy</button></div>
+<pre id="curlSample">curl https://YOUR-DOMAIN/v1/render \
+  -H &quot;Authorization: Bearer $DOCFORGE_KEY&quot; \
+  -H &quot;Content-Type: application/json&quot; \
+  -d '{&quot;template_id&quot;: &quot;gallery:receipt&quot;}' \
+  -o receipt.pdf</pre>
+<p>With your own data, save the JSON above as <code>sample.json</code> and wrap it:</p>
+<div class="codehead"><span class="muted">Your data</span><button class="btn ghost small" type="button" data-copy="curlData">Copy</button></div>
+<pre id="curlData">jq '{template_id: &quot;gallery:receipt&quot;, filename: &quot;receipt.pdf&quot;, data: .}' sample.json \
+  | curl https://YOUR-DOMAIN/v1/render \
+      -H &quot;Authorization: Bearer $DOCFORGE_KEY&quot; \
+      -H &quot;Content-Type: application/json&quot; \
+      --data-binary @- -o receipt.pdf -D headers.txt
+grep -i x-renders-remaining headers.txt</pre>
+<h3>Getting a link instead of a file</h3>
+<p>Add <code>"output": "url"</code> and the response is JSON: <code>{url, filename, size, expires_at, content_type}</code>. The link works for 24 hours without a key, which is what Zapier, Make and n8n need to attach the PDF to an email. <code>"output": "base64"</code> returns the file inline in JSON. See the <a href="/docs#no-code">no-code recipes</a>.</p>
+<h3>Customising the layout</h3>
+<p>Copy the template into your account and edit it there; your app keeps sending only data:</p>
+<pre>curl https://YOUR-DOMAIN/v1/templates \
+  -H &quot;Authorization: Bearer $DOCFORGE_KEY&quot; \
+  -H &quot;Content-Type: application/json&quot; \
+  -d '{&quot;from_gallery&quot;: &quot;receipt&quot;, &quot;name&quot;: &quot;My receipt&quot;}'
+# -&gt; {&quot;id&quot;: &quot;...&quot;, &quot;name&quot;: &quot;...&quot;, &quot;html&quot;: &quot;...&quot;, &quot;css&quot;: &quot;...&quot;, ...}
+# then render with {&quot;template_id&quot;: &quot;&lt;that id&gt;&quot;, &quot;data&quot;: {...}}</pre>
+<p class="muted">Stored templates keep HTML, CSS and sample data. Page options such as <code>footer_html</code> or <code>landscape</code> travel with each render request in <code>options</code>. Helpers are listed in the <a href="/docs#helpers">template language</a> docs.</p>
+<section class="cta card">
+  <h2>Send PDF receipts from your checkout</h2>
+  <p class="muted">Free plan: <span data-plan-renders="free">100</span> PDFs a month with a small watermark, no card. Starter removes the watermark: <span data-plan-price="starter">see pricing</span>/month for <span data-plan-renders="starter">2,500</span> PDFs, about $<span data-plan-per1k="starter">…</span> per 1,000.</p>
+  <div class="row"><a class="btn" href="/?ref=guide-receipt#signup">Get a free API key</a><a class="btn ghost" href="/docs">Read the API docs</a></div>
+</section>
+  </main>
+  <footer>
+    <div>DocForge · <a data-support-email href="mailto:"></a></div>
+    <div style="margin-top:10px">
+      <a href="/docs">API docs</a><a href="/guides/">Guides</a><a href="/terms">Terms</a><a href="/privacy">Privacy</a><a href="/refunds">Refunds</a><a href="/security">Security</a>
+    </div>
+  </footer>
+</div>
+<script>
+(() => {
+  const slug = "receipt";
+  const sample = document.getElementById('sample');
+  const btn = document.getElementById('try');
+  const status = document.getElementById('tryStatus');
+  let edited = false;
+  sample.addEventListener('input', () => { edited = true; });
+  fetch('/v1/gallery/' + slug)
+    .then((r) => (r.ok ? r.json() : null))
+    .then((t) => { if (t && t.sample_data && !edited) sample.textContent = JSON.stringify(t.sample_data, null, 2); })
+    .catch(() => {});
+  btn.onclick = async () => {
+    let data;
+    try { data = JSON.parse(sample.textContent); } catch { status.textContent = 'The sample JSON is not valid; fix it and try again.'; return; }
+    const win = window.open('', '_blank');
+    btn.disabled = true;
+    status.textContent = 'Rendering…';
+    try {
+      const res = await fetch('/v1/demo/render', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ template_id: 'gallery:' + slug, data }),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        if (win) win.close();
+        status.textContent = body.message || 'Render failed, try again in a few seconds.';
+        return;
+      }
+      const url = URL.createObjectURL(await res.blob());
+      setTimeout(() => URL.revokeObjectURL(url), 120000);
+      if (win) {
+        win.location.href = url;
+        status.textContent = 'Opened in a new tab. Demo PDFs carry a SAMPLE watermark.';
+      } else {
+        const a = document.createElement('a');
+        a.href = url;
+        a.target = '_blank';
+        a.rel = 'noopener';
+        a.textContent = 'Open the PDF';
+        status.replaceChildren(a, document.createTextNode(' (your browser blocked the new tab)'));
+      }
+    } catch {
+      if (win) win.close();
+      status.textContent = 'Network error, try again.';
+    } finally {
+      btn.disabled = false;
+    }
+  };
+})();
+</script>
+</body>
+</html>
