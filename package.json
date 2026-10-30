@@ -1,0 +1,25 @@
+{
+  "name": "docforge",
+  "version": "1.0.0",
+  "description": "Template-to-PDF API: send JSON, get a pixel-perfect PDF (invoices, receipts, certificates, quotes).",
+  "main": "src/server.js",
+  "private": true,
+  "engines": {
+    "node": ">=22.5"
+  },
+  "scripts": {
+    "start": "node --disable-warning=ExperimentalWarning src/server.js",
+    "dev": "node --disable-warning=ExperimentalWarning --watch src/server.js",
+    "test": "node --disable-warning=ExperimentalWarning --test test/*.test.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/alihucayn/miniature-octo-fiesta.git"
+  },
+  "license": "UNLICENSED",
+  "dependencies": {
+    "express": "^4.22.3",
+    "handlebars": "^4.7.10",
+    "playwright-core": "1.63.0"
+  }
+}

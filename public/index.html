@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DocForge: JSON to PDF API</title>
+<meta name="description" content="Generate invoices, receipts, certificates and quotes as PDFs from JSON. HTML + Handlebars templates, one API call, free tier, from $9/month.">
+<style>
+  :root { --bg:#fafaf9; --fg:#1c1917; --muted:#57534e; --line:#e7e5e4; --card:#fff; --accent:#4f46e5; --accent-fg:#fff; --code:#1c1917; --code-fg:#e7e5e4; }
+  @media (prefers-color-scheme: dark) { :root { --bg:#0c0a09; --fg:#f5f5f4; --muted:#a8a29e; --line:#292524; --card:#1c1917; --accent:#818cf8; --accent-fg:#0c0a09; --code:#000; } }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--fg); font:16px/1.55 system-ui,-apple-system,"Segoe UI",sans-serif; }
+  a { color: var(--accent); }
+  .wrap { max-width: 1080px; margin: 0 auto; padding: 0 20px; }
+  nav { display:flex; justify-content:space-between; align-items:center; padding:18px 0; }
+  nav b { font-size:18px; letter-spacing:-.3px; }
+  nav a { margin-left:18px; color:var(--fg); text-decoration:none; font-size:14px; }
+  .hero { padding: 56px 0 32px; }
+  h1 { font-size: clamp(32px, 5vw, 52px); line-height:1.08; letter-spacing:-1.5px; margin:0 0 16px; max-width: 760px; }
+  .lead { font-size: 19px; color: var(--muted); max-width: 640px; }
+  .btn { display:inline-block; background:var(--accent); color:var(--accent-fg); border:0; border-radius:8px; padding:11px 18px; font:600 15px system-ui; cursor:pointer; text-decoration:none; }
+  .btn.ghost { background:transparent; color:var(--fg); border:1px solid var(--line); }
+  pre { background:var(--code); color:var(--code-fg); padding:16px; border-radius:10px; overflow:auto; font-size:13px; line-height:1.5; }
+  section { padding: 44px 0; border-top:1px solid var(--line); }
+  h2 { font-size: 28px; letter-spacing:-.6px; margin:0 0 8px; }
+  .grid { display:grid; gap:16px; grid-template-columns: repeat(auto-fit, minmax(220px,1fr)); }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:20px; }
+  .card h3 { margin:0 0 6px; font-size:17px; }
+  .muted { color: var(--muted); }
+  .demo { display:grid; gap:16px; grid-template-columns: minmax(0,1fr) minmax(0,1.2fr); }
+  @media (max-width: 800px) { .demo { grid-template-columns: 1fr; } }
+  select, textarea, input { width:100%; background:var(--card); color:var(--fg); border:1px solid var(--line); border-radius:8px; padding:10px; font: 13px ui-monospace, Menlo, monospace; }
+  textarea { height: 340px; resize: vertical; }
+  iframe { width:100%; height: 460px; border:1px solid var(--line); border-radius:10px; background:#fff; }
+  .price { font-size:34px; font-weight:700; letter-spacing:-1px; }
+  .price small { font-size:14px; font-weight:400; color:var(--muted); }
+  .card ul { padding-left: 18px; margin: 10px 0 0; color: var(--muted); font-size: 14px; }
+  .featured { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+  .row { display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
+  #keybox { display:none; margin-top:14px; }
+  footer { padding: 30px 0 50px; color: var(--muted); font-size: 14px; border-top:1px solid var(--line); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <nav><b>⬡ DocForge</b><div><a href="#demo">Demo</a><a href="#pricing">Pricing</a><a href="/docs">Docs</a></div></nav>
+
+  <div class="hero">
+    <h1>Send JSON. Get a pixel-perfect PDF.</h1>
+    <p class="lead">Invoices, receipts, certificates, quotes and packing slips from HTML templates you already know how to write. One API call, no headless-Chrome servers to babysit. Free for 100 documents a month.</p>
+    <div class="row" style="margin-top:22px"><a class="btn" href="#signup">Get a free API key</a><a class="btn ghost" href="#demo">Try it live</a></div>
+<pre style="margin-top:28px">curl https://YOUR-DOMAIN/v1/render \
+  -H "Authorization: Bearer $DOCFORGE_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"template_id": "gallery:invoice", "data": {"number": "INV-001", "items": [{"description": "Consulting", "qty": 4, "price": 120}]}}' \
+  -o invoice.pdf</pre>
+  </div>
+
+  <section id="demo">
+    <h2>Try it, no signup</h2>
+    <p class="muted">Pick a template, edit the JSON, render. Demo PDFs carry a small watermark.</p>
+    <div class="demo">
+      <div>
+        <select id="tpl"></select>
+        <textarea id="data" spellcheck="false" style="margin-top:10px"></textarea>
+        <div class="row" style="margin-top:10px"><button class="btn" id="go">Render PDF</button><span id="status" class="muted"></span></div>
+      </div>
+      <iframe id="preview" title="PDF preview"></iframe>
+    </div>
+  </section>
+
+  <section>
+    <h2>Why teams pick DocForge</h2>
+    <div class="grid" style="margin-top:18px">
+      <div class="card"><h3>Plain HTML + CSS</h3><p class="muted">Design with the tools you know. Handlebars for loops and conditionals, plus money, date and total helpers built in.</p></div>
+      <div class="card"><h3>Templates live server-side</h3><p class="muted">Store templates once, then send only data. Change a layout without redeploying your app.</p></div>
+      <div class="card"><h3>Works with no-code</h3><p class="muted">Plain JSON over HTTPS, so it plugs into Zapier, Make, n8n and Bubble without a plugin.</p></div>
+      <div class="card"><h3>Priced for small teams</h3><p class="muted">2,000 documents for $9. Failed renders are never billed.</p></div>
+    </div>
+  </section>
+
+  <section id="pricing">
+    <h2>Pricing</h2>
+    <p class="muted">Monthly, cancel anytime. Upgrade with one API call; your quota changes instantly.</p>
+    <div class="grid" style="margin-top:18px" id="plans"></div>
+  </section>
+
+  <section id="signup">
+    <h2>Get your API key</h2>
+    <p class="muted">Free plan, no card. Your key is shown once, so keep it somewhere safe.</p>
+    <form id="signupForm" class="row" style="max-width:520px">
+      <input type="email" id="email" placeholder="you@company.com" required style="flex:1;font-family:inherit;font-size:15px">
+      <button class="btn">Create key</button>
+    </form>
+    <div id="keybox" class="card"><div class="muted" style="font-size:13px">Your API key</div><pre id="key" style="margin:8px 0 0"></pre></div>
+  </section>
+
+  <footer>DocForge · <a href="/docs">API docs</a> · <a href="mailto:support@example.com">support@example.com</a></footer>
+</div>
+<script>
+const $ = (id) => document.getElementById(id);
+let gallery = [];
+fetch('/v1/gallery').then(r => r.json()).then(({ templates }) => {
+  gallery = templates;
+  $('tpl').innerHTML = templates.map(t => `<option value="${t.id}">${t.name}</option>`).join('');
+  pick();
+});
+function pick() {
+  const t = gallery.find(g => g.id === $('tpl').value);
+  $('data').value = JSON.stringify(t.sample_data, null, 2);
+}
+$('tpl').onchange = pick;
+let lastUrl;
+$('go').onclick = async () => {
+  let data;
+  try { data = JSON.parse($('data').value); } catch { $('status').textContent = 'JSON is invalid.'; return; }
+  $('status').textContent = 'Rendering…';
+  const t0 = performance.now();
+  const res = await fetch('/v1/demo/render', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ template_id: $('tpl').value, data }) });
+  if (!res.ok) { $('status').textContent = (await res.json()).message || 'Render failed.'; return; }
+  if (lastUrl) URL.revokeObjectURL(lastUrl);
+  lastUrl = URL.createObjectURL(await res.blob());
+  $('preview').src = lastUrl;
+  $('status').textContent = `Done in ${Math.round(performance.now() - t0)} ms`;
+};
+fetch('/v1/plans').then(r => r.json()).then(({ plans }) => {
+  $('plans').innerHTML = Object.entries(plans).map(([id, p]) => `
+    <div class="card ${id === 'starter' ? 'featured' : ''}">
+      <h3>${p.name}</h3>
+      <div class="price">$${p.priceUsd}<small>/mo</small></div>
+      <ul><li>${p.monthlyRenders.toLocaleString()} PDFs / month</li><li>${p.templates} stored templates</li><li>${p.watermark ? 'Small footer watermark' : 'No watermark'}</li></ul>
+    </div>`).join('');
+});
+$('signupForm').onsubmit = async (e) => {
+  e.preventDefault();
+  const res = await fetch('/v1/signup', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ email: $('email').value }) });
+  const body = await res.json();
+  $('keybox').style.display = 'block';
+  $('key').textContent = res.ok ? body.api_key : (body.message || body.error);
+};
+</script>
+</body>
+</html>
